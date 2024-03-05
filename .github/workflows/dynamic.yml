@@ -1,0 +1,72 @@
+name: Dynamic Jobs
+
+on:
+#   push:
+#     branches:
+#       - main
+    workflow_dispatch:
+
+jobs:
+    generate_subdirs:
+        runs-on: ubuntu-latest
+        outputs:
+            string_list: ${{ steps.generate.outputs.string_list }}
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                python-version: '3.9'  # Specify your Python version
+            - name: Install dependencies
+              run: |
+                python -m pip install requests
+
+            - name: Generate Strings
+              id: generate
+              run: |
+                # Run your script here to produce a list of strings
+                message=$(python src/parselmouth/subdir_producer.py)
+                echo $message
+                echo "string_list=$message" >> $GITHUB_OUTPUT
+
+    run_dynamic_jobs:
+        needs: generate_subdirs
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                subdirs: ${{fromJson(needs.generate_subdirs.outputs.string_list)}}
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                python-version: '3.9'  # Specify your Python version
+            
+            - name: Install dependencies
+              run: |
+                    ls      
+                    python -m pip install --upgrade pip
+                    pip install -e .
+
+            - name: Run Dynamic Job
+              env:
+                R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+                R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+                R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+                R2_BUCKET: ${{ secrets.R2_BUCKET }}
+              run: |
+                # Run your script here with the current string
+                # For example:
+                # echo "Processing ${{ matrix.subdirs }}"
+                python src/parselmouth/main.py ${{ matrix.subdirs }}
+            
+            - name: Upload to R2
+              uses: ryand56/r2-upload-action@latest
+              with:
+                r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
+                r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+                r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+                r2-bucket: ${{ secrets.R2_BUCKET }}
+                source-dir: output
