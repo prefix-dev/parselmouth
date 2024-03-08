@@ -23,4 +23,5 @@ dependencies = [
     "requests~=2.31.0",
     "conda-forge-metadata~=0.6.2",
     "boto3~=1.34.51",
+    "python-dotenv~=1.0.1",
 ]
