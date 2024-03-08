@@ -64,7 +64,7 @@ jobs:
       - name: Upload partial index
         uses: actions/upload-artifact@v4
         with:
-            name: partial_index
+            name: partial_index_${{ matrix.subdirs }}
             path: output
     
   updater_of_index:
@@ -84,7 +84,8 @@ jobs:
         - name: Get partial index artifacts
           uses: actions/download-artifact@v4
           with:
-            name: partial_index
+            merge-multiple: true
+            path: output
 
         - name: Run dumper
           run: python src/parselmouth/updater_merger.py
