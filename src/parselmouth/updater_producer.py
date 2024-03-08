@@ -86,10 +86,10 @@ if __name__ == "__main__":
 
         if sha256 not in existing_mapping_data:
             all_packages.append(package_name)
-            letters.add(f"{subdir}@{package_name}")
+            letters.add(f"{subdir}@{package_name[0]}")
 
     total = 0
     log_once = False
-    print(f"Total new packages: {len(all_packages)}")
+    # print(f"Total new packages: {len(all_packages)}")
 
     print(json.dumps(list(letters)))
