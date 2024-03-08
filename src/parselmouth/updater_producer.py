@@ -70,23 +70,23 @@ if __name__ == "__main__":
     response = s3_client.get_object(Bucket=bucket_name, Key=index_obj_key)
     existing_mapping_data = json.loads(response['Body'].read().decode('utf-8'))
 
-    repodatas = {}
+    letters = set()
+
 
     for subdir in subdirs:
+        repodatas = {}
         repodata = get_subdir_repodata(subdir)
 
         repodatas.update(repodata["packages"])
         repodatas.update(repodata["packages.conda"])
 
-    letters = set()
+        for idx, package_name in enumerate(repodatas):
+            package = repodatas[package_name]
+            sha256 = package["sha256"]
 
-    for idx, package_name in enumerate(repodatas):
-        package = repodatas[package_name]
-        sha256 = package["sha256"]
-
-        if sha256 not in existing_mapping_data:
-            all_packages.append(package_name)
-            letters.add(f"{subdir}@{package_name[0]}")
+            if sha256 not in existing_mapping_data:
+                all_packages.append(package_name)
+                letters.add(f"{subdir}@{package_name[0]}")
 
     total = 0
     log_once = False
