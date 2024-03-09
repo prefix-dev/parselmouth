@@ -1,11 +1,9 @@
 # name: Run updater that will check for conda-forge packages
 
 on:
-    workflow_dispatch:
-# on:
-#     schedule:
-#       # run the job every six hours
-#       - cron:  '0 */6 * * *'
+    schedule:
+      # run the job every hour
+      - cron:  '0 */1 * * *'
 jobs:
   generate_hash_letters:
     runs-on: ubuntu-latest

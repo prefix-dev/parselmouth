@@ -27,10 +27,10 @@ egg_pattern_compiled = re.compile(egg_info_pattern)
 
 load_dotenv()
 
-account_id = os.environ['R2_PREFIX_ACCOUNT_ID']
-access_key_id = os.environ['R2_PREFIX_ACCESS_KEY_ID']
-access_key_secret = os.environ['R2_PREFIX_SECRET_ACCESS_KEY']
-bucket_name = os.environ['R2_PREFIX_BUCKET']
+account_id = os.environ["R2_PREFIX_ACCOUNT_ID"]
+access_key_id = os.environ["R2_PREFIX_ACCESS_KEY_ID"]
+access_key_secret = os.environ["R2_PREFIX_SECRET_ACCESS_KEY"]
+bucket_name = os.environ["R2_PREFIX_BUCKET"]
 
 
 def normalize(name: Optional[str]) -> Optional[str]:
@@ -82,7 +82,7 @@ def get_subdir_repodata(subdir: str) -> dict:
 
 def get_pypi_names_and_version(pkg_name: str, files: str) -> dict[str, str]:
     """
-        Return a dictionary of normalized names to it's version
+    Return a dictionary of normalized names to it's version
     """
     package_names: dict[str, str] = {}
     for file_name in files:
@@ -92,8 +92,8 @@ def get_pypi_names_and_version(pkg_name: str, files: str) -> dict[str, str]:
         if match:
             package_name = match.group(1)
             version = match.group(2)
-            if '-py' in version:
-                index_of_py = version.index('-py')
+            if "-py" in version:
+                index_of_py = version.index("-py")
                 version = version[:index_of_py]
 
             pkg_version = None
@@ -101,8 +101,8 @@ def get_pypi_names_and_version(pkg_name: str, files: str) -> dict[str, str]:
             try:
                 pkg_version = parse(version)
             except Exception as e:
-                if '-' in version:
-                    index_of_dash = version.rfind('-')
+                if "-" in version:
+                    index_of_dash = version.rfind("-")
                     version = version[:index_of_dash]
 
             if pkg_version:
@@ -112,34 +112,32 @@ def get_pypi_names_and_version(pkg_name: str, files: str) -> dict[str, str]:
 
     return package_names
 
+
 def upload(file_name: str, bucket_name: str, file_body: dict, s3_client):
     output = json.dumps(file_body)
-    output_as_file = io.BytesIO(output.encode('utf-8'))
-    
+    output_as_file = io.BytesIO(output.encode("utf-8"))
+
     s3_client.upload_fileobj(output_as_file, bucket_name, f"hash-v0/{file_name}")
 
 
 if __name__ == "__main__":
-
     subdir, letter = sys.argv[1].split("@")
-        
+
     all_packages: list[tuple[str, str]] = []
 
-
     s3_client = boto3.client(
-        service_name ="s3",
-        endpoint_url = f"https://{account_id}.r2.cloudflarestorage.com",
-        aws_access_key_id = f"{access_key_id}",
-        aws_secret_access_key = f"{access_key_secret}",
-        region_name="eeur", # Must be one of: wnam, enam, weur, eeur, apac, auto
+        service_name="s3",
+        endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
+        aws_access_key_id=f"{access_key_id}",
+        aws_secret_access_key=f"{access_key_secret}",
+        region_name="eeur",  # Must be one of: wnam, enam, weur, eeur, apac, auto
     )
 
     # index_obj_key = "hash-v0/index.json"
     # response = s3_client.get_object(Bucket=bucket_name, Key=index_obj_key)
-    
-    with open('output_index/index.json') as index_file:
-        existing_mapping_data: dict = json.load(index_file)
 
+    with open("output_index/index.json") as index_file:
+        existing_mapping_data: dict = json.load(index_file)
 
     repodatas: dict[str, dict] = {}
 
@@ -147,7 +145,7 @@ if __name__ == "__main__":
 
     repodatas.update(repodata["packages"])
     repodatas.update(repodata["packages.conda"])
-        
+
     for idx, package_name in enumerate(repodatas):
         if not package_name.startswith(letter):
             continue
@@ -158,11 +156,9 @@ if __name__ == "__main__":
         if sha256 not in existing_mapping_data:
             all_packages.append(package_name)
 
-
     total = 0
     log_once = False
     logging.warning(f"Total packages for processing: {len(all_packages)} for {subdir}")
-
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = {
@@ -184,11 +180,17 @@ if __name__ == "__main__":
             try:
                 artifact = done.result()
                 if artifact:
-                    pypi_names_and_versions = get_pypi_names_and_version(package_name, artifact["files"])
-                    pypi_normalized_names = (
-                        [name for name in pypi_names_and_versions] if pypi_names_and_versions else None
+                    pypi_names_and_versions = get_pypi_names_and_version(
+                        package_name, artifact["files"]
                     )
-                    source: Optional[dict] = artifact["rendered_recipe"].get("source", None)
+                    pypi_normalized_names = (
+                        [name for name in pypi_names_and_versions]
+                        if pypi_names_and_versions
+                        else None
+                    )
+                    source: Optional[dict] = artifact["rendered_recipe"].get(
+                        "source", None
+                    )
                     is_direct_url: Optional[bool] = None
 
                     if source and isinstance(source, list):
@@ -197,7 +199,6 @@ if __name__ == "__main__":
                             conda_name,
                             source.get("url"),
                         )
-
 
                     sha = repodatas[package_name]["sha256"]
                     conda_name = artifact["name"]
@@ -211,7 +212,9 @@ if __name__ == "__main__":
                     if sha not in names_mapping:
                         names_mapping[sha] = {
                             "pypi_normalized_names": pypi_normalized_names,
-                            "versions": pypi_names_and_versions if pypi_names_and_versions else None,
+                            "versions": pypi_names_and_versions
+                            if pypi_names_and_versions
+                            else None,
                             "conda_name": conda_name,
                             "package_name": package_name,
                             "direct_url": direct_url,
@@ -219,10 +222,10 @@ if __name__ == "__main__":
 
             except Exception as e:
                 logging.error(f"An error occurred: {e} for package {package_name}")
-    
+
     total = 0
 
-    logging.warning(f'Starting to dump to S3 for {subdir}')
+    logging.warning(f"Starting to dump to S3 for {subdir}")
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = {
@@ -250,9 +253,6 @@ if __name__ == "__main__":
 
     logging.warning(f"Producing partial index.json")
 
-    
     os.makedirs(f"output", exist_ok=True)
     with open(f"output/{partial_json_name}", mode="w") as mapping_file:
         json.dump(names_mapping, mapping_file)
-
-
