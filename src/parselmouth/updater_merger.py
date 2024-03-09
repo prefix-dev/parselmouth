@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     print(f"Total new files {total_new_files}")
 
-    # upload("index.json", bucket_name, existing_mapping_data, s3_client)
+    upload("index.json", bucket_name, existing_mapping_data, s3_client)
 
 
 
