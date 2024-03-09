@@ -1,4 +1,4 @@
-# name: Run merger and save each hash
+# name: Run updater that will check for conda-forge packages
 
 on:
     workflow_dispatch:
@@ -46,7 +46,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'  # Specify your Python version
+          python-version: '3.9'
 
       - name: Install dependencies
         run: |
