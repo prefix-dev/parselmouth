@@ -1,16 +1,9 @@
-import io
 import json
-import shutil
-import sys
 import os
 import re
-from typing import Optional
 import requests
-from conda_forge_metadata.artifact_info import get_artifact_info_as_json
-import concurrent.futures
 import logging
 import boto3
-from conda_oci_mirror.defaults import CACHE_DIR
 from dotenv import load_dotenv
 
 
@@ -86,8 +79,8 @@ if __name__ == "__main__":
     total = 0
     log_once = False
 
-    os.makedirs(f"output_index", exist_ok=True)
-    with open(f"output_index/index.json", mode="w") as mapping_file:
+    os.makedirs("output_index", exist_ok=True)
+    with open("output_index/index.json", mode="w") as mapping_file:
         json.dump(existing_mapping_data, mapping_file)
 
     print(json.dumps(list(letters)))

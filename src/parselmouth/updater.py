@@ -1,6 +1,5 @@
 import io
 import json
-import shutil
 import sys
 import os
 import re
@@ -10,7 +9,6 @@ from conda_forge_metadata.artifact_info import get_artifact_info_as_json
 import concurrent.futures
 import logging
 import boto3
-from conda_oci_mirror.defaults import CACHE_DIR
 from dotenv import load_dotenv
 from packaging.version import parse
 
@@ -23,7 +21,6 @@ egg_info_pattern = r"([^/]+?)-(\d+[^/]*)\.egg-info\/PKG-INFO"
 dist_pattern_compiled = re.compile(dist_info_pattern)
 egg_pattern_compiled = re.compile(egg_info_pattern)
 
-# MAPPING = "mapping.json"
 
 load_dotenv()
 
@@ -80,7 +77,7 @@ def get_subdir_repodata(subdir: str) -> dict:
     logging.error(f"Requst for repodata to {url} failed. {response.reason}")
 
 
-def get_pypi_names_and_version(pkg_name: str, files: str) -> dict[str, str]:
+def get_pypi_names_and_version(files: str) -> dict[str, str]:
     """
     Return a dictionary of normalized names to it's version
     """
@@ -100,7 +97,7 @@ def get_pypi_names_and_version(pkg_name: str, files: str) -> dict[str, str]:
 
             try:
                 pkg_version = parse(version)
-            except Exception as e:
+            except Exception:
                 if "-" in version:
                     index_of_dash = version.rfind("-")
                     version = version[:index_of_dash]
@@ -181,7 +178,7 @@ if __name__ == "__main__":
                 artifact = done.result()
                 if artifact:
                     pypi_names_and_versions = get_pypi_names_and_version(
-                        package_name, artifact["files"]
+                        artifact["files"]
                     )
                     pypi_normalized_names = (
                         [name for name in pypi_names_and_versions]
@@ -196,7 +193,7 @@ if __name__ == "__main__":
                     if source and isinstance(source, list):
                         source = artifact["rendered_recipe"]["source"][0]
                         is_direct_url = check_if_is_direct_url(
-                            conda_name,
+                            package_name,
                             source.get("url"),
                         )
 
@@ -251,8 +248,8 @@ if __name__ == "__main__":
 
     partial_json_name = f"{subdir}@{letter}.json"
 
-    logging.warning(f"Producing partial index.json")
+    logging.warning("Producing partial index.json")
 
-    os.makedirs(f"output", exist_ok=True)
+    os.makedirs("output", exist_ok=True)
     with open(f"output/{partial_json_name}", mode="w") as mapping_file:
         json.dump(names_mapping, mapping_file)

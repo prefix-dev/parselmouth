@@ -28,7 +28,7 @@ if __name__ == "__main__":
         region_name="eeur",  # Must be one of: wnam, enam, weur, eeur, apac, auto
     )
 
-    obj_key = f"hash-v0/index.json"
+    obj_key = "hash-v0/index.json"
     response = s3_client.get_object(Bucket=bucket_name, Key=obj_key)
     existing_mapping_data: dict = json.loads(response["Body"].read().decode("utf-8"))
 
