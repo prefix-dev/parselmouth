@@ -2,7 +2,10 @@
 
 on:
     workflow_dispatch:
-
+# on:
+#     schedule:
+#       # run the job every six hours
+#       - cron:  '0 */6 * * *'
 jobs:
   generate_hash_letters:
     runs-on: ubuntu-latest
@@ -31,6 +34,12 @@ jobs:
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
             R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
             R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
+        
+        - name: Upload requested index.json
+          uses: actions/upload-artifact@v4
+          with:
+            name: index
+            path: output_index
 
 
   updater_of_records:
@@ -52,6 +61,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+    
+      - name: Get partial index artifacts
+        uses: actions/download-artifact@v4
+        with:
+            name: index
+            path: output_index
 
       - name: Run dumper
         run: python src/parselmouth/updater.py ${{ matrix.subdirs }}

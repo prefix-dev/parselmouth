@@ -14,8 +14,6 @@ from conda_oci_mirror.defaults import CACHE_DIR
 from dotenv import load_dotenv
 
 
-names_mapping: dict[str, str] = {}
-
 dist_info_pattern = r"([^/]+)-(\d+[^/]*)\.dist-info\/METADATA"
 egg_info_pattern = r"([^/]+?)-(\d+[^/]*)\.egg-info\/PKG-INFO"
 
@@ -90,6 +88,9 @@ if __name__ == "__main__":
 
     total = 0
     log_once = False
-    # print(f"Total new packages: {len(all_packages)}")
+
+    os.makedirs(f"output_index", exist_ok=True)
+    with open(f"output_index/index.json", mode="w") as mapping_file:
+        json.dump(existing_mapping_data, mapping_file)
 
     print(json.dumps(list(letters)))
