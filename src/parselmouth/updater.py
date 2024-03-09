@@ -12,6 +12,7 @@ import logging
 import boto3
 from conda_oci_mirror.defaults import CACHE_DIR
 from dotenv import load_dotenv
+from packaging.version import parse
 
 
 names_mapping: dict[str, str] = {}
@@ -95,6 +96,18 @@ def get_pypi_names_and_version(pkg_name: str, files: str) -> dict[str, str]:
                 index_of_py = version.index('-py')
                 version = version[:index_of_py]
 
+            pkg_version = None
+
+            try:
+                pkg_version = parse(version)
+            except Exception as e:
+                if '-' in version:
+                    index_of_dash = version.rfind('-')
+                    version = version[:index_of_dash]
+
+            if pkg_version:
+                version = str(pkg_version)
+
             package_names[normalize(package_name)] = version
 
     return package_names
@@ -156,7 +169,7 @@ if __name__ == "__main__":
                 channel="conda-forge",
                 subdir=subdir,
                 artifact=package_name,
-                backend="streamed" if package_name.endswith('.conda') else "oci",
+                backend="oci",
             ): package_name
             for package_name in all_packages
         }
