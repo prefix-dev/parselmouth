@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "parselmouth"
 version = "0.0.1"
 authors = [
-  { name="Nichita Morcotilo", email="nmorkotilo@gmail.com" },
+  { name="Nichita Morcotilo", email="nichita@prefix.dev" },
 ]
 description = "Mapper of conda to pypi"
 readme = "README.md"
