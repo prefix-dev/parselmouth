@@ -42,6 +42,8 @@ Example of mapping for `numpy-1.26.4-py311h64a7726_0.conda` with sha256 `3f4365e
 }
 ```
 
+More simplified version of our mapping is stored here: `files/mapping_as_grayskull.json`
+
 
 
 Developed with ❤️ at [prefix.dev](https://prefix.dev).
