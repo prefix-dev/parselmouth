@@ -5,7 +5,7 @@ import os
 import re
 from typing import Optional
 import requests
-from conda_forge_metadata.artifact_info import get_artifact_info_as_json
+from conda_forge_metadata.artifact_info.info_json import get_artifact_info_as_json
 import concurrent.futures
 import logging
 import boto3

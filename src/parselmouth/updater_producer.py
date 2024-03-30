@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from typing import Any
 import requests
 import logging
 import boto3
@@ -22,7 +23,7 @@ access_key_secret = os.environ["R2_PREFIX_SECRET_ACCESS_KEY"]
 bucket_name = os.environ["R2_PREFIX_BUCKET"]
 
 
-def get_all_archs_available() -> set[str]:
+def get_all_archs_available() -> list[str]:
     response = requests.get("https://conda.anaconda.org/conda-forge/channeldata.json")
     channel_json = response.json()
     # Collect all subdirectories
@@ -33,13 +34,15 @@ def get_all_archs_available() -> set[str]:
     return list(set(subdirs))
 
 
-def get_subdir_repodata(subdir: str) -> dict:
+def get_subdir_repodata(subdir: str) -> dict[Any, Any]:
     url = f"https://conda.anaconda.org/conda-forge/{subdir}/repodata.json"
     response = requests.get(url)
     if response.ok:
         return response.json()
 
     logging.error(f"Requst for repodata to {url} failed. {response.reason}")
+
+    raise Exception(f"Requst for repodata to {url} failed. {response.reason}")
 
 
 if __name__ == "__main__":
