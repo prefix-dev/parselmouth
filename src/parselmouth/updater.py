@@ -24,10 +24,10 @@ egg_pattern_compiled = re.compile(egg_info_pattern)
 
 load_dotenv()
 
-account_id = os.environ["R2_PREFIX_ACCOUNT_ID"]
-access_key_id = os.environ["R2_PREFIX_ACCESS_KEY_ID"]
-access_key_secret = os.environ["R2_PREFIX_SECRET_ACCESS_KEY"]
-bucket_name = os.environ["R2_PREFIX_BUCKET"]
+account_id = os.getenv("R2_PREFIX_ACCOUNT_ID", "")
+access_key_id = os.getenv("R2_PREFIX_ACCESS_KEY_ID", "")
+access_key_secret = os.getenv("R2_PREFIX_SECRET_ACCESS_KEY", "")
+bucket_name = os.getenv("R2_PREFIX_BUCKET", "conda")
 
 
 def normalize(name: Optional[str]) -> Optional[str]:
