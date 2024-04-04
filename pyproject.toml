@@ -26,3 +26,11 @@ dependencies = [
     "python-dotenv~=1.0.1",
     "packaging",
 ]
+
+[tool.pixi.project]
+name = "parselmouth"
+channels = ["conda-forge"]
+platforms = ["osx-arm64"]
+
+[tool.pixi.pypi-dependencies]
+parselmouth = { path = ".", editable=true}

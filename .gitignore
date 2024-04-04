@@ -161,3 +161,6 @@ cython_debug/
 
 mapping/*# pixi environments
 .pixi
+# pixi environments
+.pixi
+
