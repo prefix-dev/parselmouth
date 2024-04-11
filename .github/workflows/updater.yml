@@ -145,7 +145,13 @@ jobs:
 
       - name: Run update script
         run: |
-          pixi run python src/parselmouth/updater_merger.py
+          pixi run python src/parselmouth/map_as_grayskull_transformer.py
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
+          R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
+          R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
+          R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
 
       - name: Commit and push changes
         env:
