@@ -128,6 +128,8 @@ jobs:
   
   update_file:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # To push a branch
 
     steps:
       - name: Checkout code
