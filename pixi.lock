@@ -809,7 +809,7 @@ packages:
   name: parselmouth
   version: 0.0.1
   path: .
-  sha256: 2850a2bef56f562719acdb9d807fe2cf3b8a83b32af8e835ef2465a924ac6204
+  sha256: 77e1b83dc745c4c03e14005ab7ce7d34990d441fb357cef91cac86e486f6a7db
   requires_dist:
   - conda-oci-mirror @ git+https://github.com/channel-mirrors/conda-oci-mirror.git@25ea3e436f0b0bc5a9c646121efafc9c68e116cd
   - conda-forge-metadata ~=0.6.2
@@ -1070,6 +1070,12 @@ packages:
 - kind: pypi
   name: rpds-py
   version: 0.18.0
+  url: https://files.pythonhosted.org/packages/fd/ea/92231b62681961812e9fbd8ef9be7137856784406bf6a384976bb7b46472/rpds_py-0.18.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+  sha256: ddc2f4dfd396c7bfa18e6ce371cba60e4cf9d2e5cdb71376aa2da264605b60b9
+  requires_python: '>=3.8'
+- kind: pypi
+  name: rpds-py
+  version: 0.18.0
   url: https://files.pythonhosted.org/packages/a0/62/c896cec9434e09fb933f3cadd5c699e9cea49ab8934d694b6634650748db/rpds_py-0.18.0-cp39-none-win_amd64.whl
   sha256: 6ef687afab047554a2d366e112dd187b62d261d49eb79b77e386f94644363294
   requires_python: '>=3.8'
@@ -1078,12 +1084,6 @@ packages:
   version: 0.18.0
   url: https://files.pythonhosted.org/packages/fc/82/4cc5a780f298a92ec5bfb1d7af33d16f07fe689b31a4dfc49f5ede267e88/rpds_py-0.18.0-cp39-cp39-macosx_11_0_arm64.whl
   sha256: 77f195baa60a54ef9d2de16fbbfd3ff8b04edc0c0140a761b56c267ac11aa467
-  requires_python: '>=3.8'
-- kind: pypi
-  name: rpds-py
-  version: 0.18.0
-  url: https://files.pythonhosted.org/packages/fd/ea/92231b62681961812e9fbd8ef9be7137856784406bf6a384976bb7b46472/rpds_py-0.18.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-  sha256: ddc2f4dfd396c7bfa18e6ce371cba60e4cf9d2e5cdb71376aa2da264605b60b9
   requires_python: '>=3.8'
 - kind: pypi
   name: ruamel-yaml
@@ -1099,6 +1099,12 @@ packages:
 - kind: pypi
   name: ruamel-yaml-clib
   version: 0.2.8
+  url: https://files.pythonhosted.org/packages/7c/b2/389b345a60131593028b0263fddaa580edb4081697a3f3aa1f168f67519f/ruamel.yaml.clib-0.2.8-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl
+  sha256: da09ad1c359a728e112d60116f626cc9f29730ff3e0e7db72b9a2dbc2e4beed5
+  requires_python: '>=3.6'
+- kind: pypi
+  name: ruamel-yaml-clib
+  version: 0.2.8
   url: https://files.pythonhosted.org/packages/74/82/e9bb3a3a2268987b7bc472c5c26b420757e04db0d0408e6626d07e388e4c/ruamel.yaml.clib-0.2.8-cp39-cp39-win_amd64.whl
   sha256: 25ac8c08322002b06fa1d49d1646181f0b2c72f5cbc15a85e80b4c30a544bb15
   requires_python: '>=3.6'
@@ -1107,12 +1113,6 @@ packages:
   version: 0.2.8
   url: https://files.pythonhosted.org/packages/46/ab/bab9eb1566cd16f060b54055dd39cf6a34bfa0240c53a7218c43e974295b/ruamel.yaml.clib-0.2.8.tar.gz
   sha256: beb2e0404003de9a4cab9753a8805a8fe9320ee6673136ed7f04255fe60bb512
-  requires_python: '>=3.6'
-- kind: pypi
-  name: ruamel-yaml-clib
-  version: 0.2.8
-  url: https://files.pythonhosted.org/packages/7c/b2/389b345a60131593028b0263fddaa580edb4081697a3f3aa1f168f67519f/ruamel.yaml.clib-0.2.8-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl
-  sha256: da09ad1c359a728e112d60116f626cc9f29730ff3e0e7db72b9a2dbc2e4beed5
   requires_python: '>=3.6'
 - kind: conda
   name: s3transfer
@@ -1405,6 +1405,15 @@ packages:
 - kind: pypi
   name: zstandard
   version: 0.22.0
+  url: https://files.pythonhosted.org/packages/85/96/61a79e9e9c9e14e5e1baf84fd71115944320bac525fcd754695ba84e2084/zstandard-0.22.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+  sha256: 48f260e4c7294ef275744210a4010f116048e0c95857befb7462e033f09442fe
+  requires_dist:
+  - cffi >=1.11 ; platform_python_implementation == 'PyPy'
+  - cffi >=1.11 ; extra == 'cffi'
+  requires_python: '>=3.8'
+- kind: pypi
+  name: zstandard
+  version: 0.22.0
   url: https://files.pythonhosted.org/packages/9f/46/911443d9d91749d27b355e2eb2b7aace6f01dca668cf602fd1669be6941a/zstandard-0.22.0-cp39-cp39-win_amd64.whl
   sha256: e9e9d4e2e336c529d4c435baad846a181e39a982f823f7e4495ec0b0ec8538d2
   requires_dist:
@@ -1416,15 +1425,6 @@ packages:
   version: 0.22.0
   url: https://files.pythonhosted.org/packages/d9/15/7d40ac656fec0710394278e91649bdeea5bec0230fb18dd655f67e7b02e3/zstandard-0.22.0-cp39-cp39-macosx_11_0_arm64.whl
   sha256: 73a1d6bd01961e9fd447162e137ed949c01bdb830dfca487c4a14e9742dccc93
-  requires_dist:
-  - cffi >=1.11 ; platform_python_implementation == 'PyPy'
-  - cffi >=1.11 ; extra == 'cffi'
-  requires_python: '>=3.8'
-- kind: pypi
-  name: zstandard
-  version: 0.22.0
-  url: https://files.pythonhosted.org/packages/85/96/61a79e9e9c9e14e5e1baf84fd71115944320bac525fcd754695ba84e2084/zstandard-0.22.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-  sha256: 48f260e4c7294ef275744210a4010f116048e0c95857befb7462e033f09442fe
   requires_dist:
   - cffi >=1.11 ; platform_python_implementation == 'PyPy'
   - cffi >=1.11 ; extra == 'cffi'
