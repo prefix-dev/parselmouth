@@ -125,3 +125,34 @@ jobs:
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
             R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
             R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
+  
+  update_file:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - uses: prefix-dev/setup-pixi@v0.5.1
+        with:
+          pixi-version: "latest"
+          manifest-path: pyproject.toml
+
+      - name: Run update script
+        run: |
+          pixi run python src/parselmouth/updater_merger.py
+
+      - name: Commit and push changes
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add files/mapping_as_grayskull.json
+          git commit -m "Update file via GitHub Action"
+          git push
