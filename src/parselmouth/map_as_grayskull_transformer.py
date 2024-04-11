@@ -89,7 +89,7 @@ def transform_mapping_in_grayskull_format(
 
         map_as_in_grayskull[conda_name] = pypi_name
 
-    with open("files/test_mapping_as_grayskull.json", "w") as map_file:
+    with open("files/mapping_as_grayskull.json", "w") as map_file:
         json.dump(map_as_in_grayskull, map_file)
 
     if with_analytics:
