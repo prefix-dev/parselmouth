@@ -163,6 +163,6 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add files/mapping_as_grayskull.json
+          git add files/test_mapping_as_grayskull.json
           git commit -m "Update file via GitHub Action"
           git push
