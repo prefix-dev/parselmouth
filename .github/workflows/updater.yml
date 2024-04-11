@@ -4,6 +4,8 @@ on:
     schedule:
       # run the job every hour
       - cron:  '0 */1 * * *'
+    workflow_dispatch:
+    
 jobs:
   generate_hash_letters:
     runs-on: ubuntu-latest
