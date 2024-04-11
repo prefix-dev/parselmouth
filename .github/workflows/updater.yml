@@ -155,7 +155,7 @@ jobs:
 
       - name: Commit and push changes
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
           R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
           R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
