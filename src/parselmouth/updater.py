@@ -6,6 +6,7 @@ import re
 from typing import Optional
 import requests
 from conda_forge_metadata.artifact_info.info_json import get_artifact_info_as_json
+from conda_forge_metadata.types import ArtifactData
 import concurrent.futures
 import logging
 import boto3
@@ -13,7 +14,7 @@ from dotenv import load_dotenv
 from packaging.version import parse
 
 
-names_mapping: dict[str, str] = {}
+names_mapping: dict[str, dict] = {}
 
 dist_info_pattern = r"([^/]+)-(\d+[^/]*)\.dist-info\/METADATA"
 egg_info_pattern = r"([^/]+?)-(\d+[^/]*)\.egg-info\/PKG-INFO"
@@ -77,7 +78,7 @@ def get_subdir_repodata(subdir: str) -> dict:
     logging.error(f"Requst for repodata to {url} failed. {response.reason}")
 
 
-def get_pypi_names_and_version(files: str) -> dict[str, str]:
+def get_pypi_names_and_version(files: list[str]) -> dict[str, str]:
     """
     Return a dictionary of normalized names to it's version
     """
@@ -151,7 +152,8 @@ if __name__ == "__main__":
         sha256 = package["sha256"]
 
         if sha256 not in existing_mapping_data:
-            all_packages.append(package_name)
+            all_packages.append((package_name, "oci"))
+            all_packages.append((package_name, "libcfgraph"))
 
     total = 0
     log_once = False
@@ -164,9 +166,9 @@ if __name__ == "__main__":
                 channel="conda-forge",
                 subdir=subdir,
                 artifact=package_name,
-                backend="oci",
+                backend=backend_type,
             ): package_name
-            for package_name in all_packages
+            for (package_name, backend_type) in all_packages
         }
 
         for done in concurrent.futures.as_completed(futures):
@@ -175,7 +177,7 @@ if __name__ == "__main__":
                 logging.warning(f"Done {total} from {len(all_packages)}")
             package_name = futures[done]
             try:
-                artifact = done.result()
+                artifact: Optional[ArtifactData] = done.result()
                 if artifact:
                     pypi_names_and_versions = get_pypi_names_and_version(
                         artifact["files"]
