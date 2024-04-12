@@ -29,10 +29,11 @@ jobs:
           run: | 
            pixi install
 
-        - name: Generate Strings
+        - name: Generate combination of missing subdirs and letters
           id: generate
           run: |
-            # Run your script here to produce a list of strings
+            # Run your script here to produce a list of missing subdirs and letters
+            # example: linux-64@p linux-64@d
             message=$(pixi run python src/parselmouth/updater_producer.py)
             echo $message
             echo "string_list=$message" >> $GITHUB_OUTPUT
@@ -79,7 +80,7 @@ jobs:
             name: index
             path: output_index
 
-      - name: Run dumper
+      - name: Get artifact info for subdir@letter and save into partial index
         run: pixi run python src/parselmouth/updater.py ${{ matrix.subdirs }}
         env:
             R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
@@ -118,7 +119,7 @@ jobs:
             merge-multiple: true
             path: output
 
-        - name: Run dumper
+        - name: Combine all partial index and save into S3 index
           run: pixi run python src/parselmouth/updater_merger.py
           env:
             R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
@@ -146,7 +147,7 @@ jobs:
           pixi-version: "latest"
           manifest-path: pyproject.toml
 
-      - name: Run update script
+      - name: Update grayskull mapping
         run: |
           pixi run python src/parselmouth/map_as_grayskull_transformer.py
         env:
