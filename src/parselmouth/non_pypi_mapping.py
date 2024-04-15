@@ -97,9 +97,6 @@ if __name__ == "__main__":
 
         for request_executed in concurrent.futures.as_completed(futures):
             package_name = futures[request_executed]
-            # package_name = package['name']
-            # package_hash = package["package"]["sha256"]
-            # filename = package["filename"]
 
             try:
                 response = request_executed.result()
@@ -126,9 +123,9 @@ if __name__ == "__main__":
         "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/mapping_as_grayskull.json"
     ).json()
 
-    filtered_non_pypi_names = {}
+    filtered_non_pypi_names = []
 
-    non_existing_pypi_packages = {}
+    non_existing_pypi_packages = []
 
     mapped_pypi_name_to_conda = {
         compressed_mapping[conda_key]: conda_key for conda_key in compressed_mapping
@@ -140,9 +137,7 @@ if __name__ == "__main__":
             # for unknown reason
             # but it is a mapped package so we skip it
             continue
-        filtered_non_pypi_names[non_pypi] = mapped_pypi_name_to_conda.get(
-            non_pypi, None
-        )
+        filtered_non_pypi_names.append(non_pypi)
 
     with open("files/non_pypi_names.json", "w") as ff:
         json.dump(filtered_non_pypi_names, ff)
@@ -152,9 +147,7 @@ if __name__ == "__main__":
             # some of the mapped pypi packages can come direct from 
             # gh releases without having a pypi alternative
             # so we track them in separate file for now
-            non_existing_pypi_packages[non_existing] = mapped_pypi_name_to_conda.get(
-                non_existing, None
-            )
+            non_existing_pypi_packages.append(non_existing)
 
     with open("files/non_existing_pypi_packages.json", "w") as ff:
         json.dump(non_existing_pypi_packages, ff)
