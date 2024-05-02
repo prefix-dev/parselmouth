@@ -19,7 +19,7 @@ class S3:
         else:
             logging.info("s3 client initialised")
 
-        account_id = os.getenv("R2_PREFIX_ACCOUNT_ID", "")
+        account_id = os.getenv("R2_PREFIX_ACCOUNT_ID", "some_id")
         access_key_id = os.getenv("R2_PREFIX_ACCESS_KEY_ID", "")
         access_key_secret = os.getenv("R2_PREFIX_SECRET_ACCESS_KEY", "")
         bucket_name = os.getenv("R2_PREFIX_BUCKET", "conda")
