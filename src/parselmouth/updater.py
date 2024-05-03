@@ -168,9 +168,6 @@ def main(
                         }
 
             except Exception as e:
-                import pdb
-
-                pdb.set_trace()
                 logging.error(f"An error occurred: {e} for package {package_name}")
 
     total = 0
