@@ -81,12 +81,16 @@ def get_pypi_names_and_version(files: list[str]) -> dict[str, str]:
     return package_names
 
 
-if __name__ == "__main__":
-    subdir, letter = sys.argv[1].split("@")
+def main(
+    subdir_letter: str,
+    output_dir: str = "output_index",
+    partial_output_dir: str = "output",
+):
+    subdir, letter = subdir_letter.split("@")
 
     all_packages: list[tuple[str, str]] = []
 
-    with open("output_index/index.json") as index_file:
+    with open(f"{output_dir}/index.json") as index_file:
         existing_mapping_data: dict = json.load(index_file)
 
     repodatas = get_all_packages_by_subdir(subdir)
@@ -103,9 +107,7 @@ if __name__ == "__main__":
             all_packages.append((package_name, "libcfgraph"))
 
     total = 0
-    log_once = False
     logging.warning(f"Total packages for processing: {len(all_packages)} for {subdir}")
-
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = {
             executor.submit(
@@ -166,6 +168,9 @@ if __name__ == "__main__":
                         }
 
             except Exception as e:
+                import pdb
+
+                pdb.set_trace()
                 logging.error(f"An error occurred: {e} for package {package_name}")
 
     total = 0
@@ -196,6 +201,10 @@ if __name__ == "__main__":
 
     logging.warning("Producing partial index.json")
 
-    os.makedirs("output", exist_ok=True)
-    with open(f"output/{partial_json_name}", mode="w") as mapping_file:
+    os.makedirs(partial_output_dir, exist_ok=True)
+    with open(f"{partial_output_dir}/{partial_json_name}", mode="w") as mapping_file:
         json.dump(names_mapping, mapping_file)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1])

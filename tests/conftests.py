@@ -1,3 +1,4 @@
+from parselmouth.conda_forge import get_subdir_repodata
 from parselmouth.s3 import S3
 
 
@@ -12,3 +13,20 @@ class MockS3(S3):
 
     def upload_mapping(self, file_body: dict, file_name: str):
         self._uploaded_mapping[file_name] = file_body
+
+
+def mocked_get_all_packages_by_subdir(subdir: str) -> dict[str, dict]:
+    repodatas: dict[str, dict] = {}
+
+    repodata = get_subdir_repodata(subdir)
+
+    repodatas.update(repodata["packages"])
+    repodatas.update(repodata["packages.conda"])
+
+    small_repodatas = {}
+
+    for idx, pkg_name in enumerate(repodatas):
+        if "pymongo" in pkg_name:
+            small_repodatas[pkg_name] = repodatas[pkg_name]
+
+    return small_repodatas
