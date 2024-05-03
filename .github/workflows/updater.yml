@@ -3,9 +3,12 @@
 on:
     schedule:
       # run the job every hour
-      - cron:  '0 */1 * * *'
+      - cron:  '*/5 * * * *'
     workflow_dispatch:
-    
+
+concurrency:
+  group: ${{ github.workflow }}
+
 jobs:
   generate_hash_letters:
     runs-on: ubuntu-latest
@@ -147,9 +150,9 @@ jobs:
           pixi-version: "latest"
           manifest-path: pyproject.toml
 
-      - name: Update grayskull mapping
+      - name: Update grayskull mapping and compressed mapping
         run: |
-          pixi run python src/parselmouth/map_as_grayskull_transformer.py
+          pixi run python src/parselmouth/mapping_transformer.py
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
@@ -164,5 +167,6 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add files/mapping_as_grayskull.json
+          git add files/compressed_mapping.json
           git commit -m "Update file via GitHub Action" || true
           git push
