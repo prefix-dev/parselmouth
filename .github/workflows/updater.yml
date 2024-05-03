@@ -5,7 +5,10 @@ on:
       # run the job every hour
       - cron:  '*/5 * * * *'
     workflow_dispatch:
-    
+
+concurrency:
+  group: ${{ github.workflow }}
+
 jobs:
   generate_hash_letters:
     runs-on: ubuntu-latest
