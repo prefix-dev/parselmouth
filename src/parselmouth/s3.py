@@ -16,10 +16,8 @@ class S3:
             logging.warning(
                 "no .env file was loaded. S3 requests may fail until R2_PREFIX_* keys are set."
             )
-        else:
-            logging.info("s3 client initialised")
 
-        account_id = os.getenv("R2_PREFIX_ACCOUNT_ID", "some_id")
+        account_id = os.getenv("R2_PREFIX_ACCOUNT_ID", "default")
         access_key_id = os.getenv("R2_PREFIX_ACCESS_KEY_ID", "")
         access_key_secret = os.getenv("R2_PREFIX_SECRET_ACCESS_KEY", "")
         bucket_name = os.getenv("R2_PREFIX_BUCKET", "conda")
