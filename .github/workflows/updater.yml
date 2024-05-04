@@ -2,8 +2,8 @@
 
 on:
     schedule:
-      # run the job every hour
-      - cron:  '*/5 * * * *'
+      # run the job every 10 minutes
+      - cron:  '*/10 * * * *'
     workflow_dispatch:
 
 concurrency:
