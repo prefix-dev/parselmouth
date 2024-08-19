@@ -17,7 +17,8 @@ def test_updater_producer_catch_new_packages(tmp_path, capsys):
     # serialize back letters
     letters_serialized = json.loads(captured.out)
 
-    assert len(letters_serialized) == 231
+    assert len(letters_serialized) >= 232
+    assert "noarch@u" in letters_serialized
 
     mock_mapping = test_s3_client._uploaded_mapping
 
