@@ -150,7 +150,7 @@ def main(
                     sha = repodatas[package_name]["sha256"]
                     conda_name = artifact["name"]
 
-                    if not is_direct_url:
+                    if not is_direct_url or not source:
                         direct_url = None
                     else:
                         url = source.get("url", None)

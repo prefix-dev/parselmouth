@@ -10,7 +10,7 @@ authors = [
 ]
 description = "Mapper of conda to pypi"
 readme = "README.md"
-requires-python = "==3.9"
+requires-python = "==3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -35,6 +35,7 @@ parselmouth = { path = ".", editable = true }
 [tool.pixi.dependencies]
 requests = ">=2.31.0,<2.32"
 boto3 = ">=1.34,<1.35"
+boto3-stubs = ">=1.34,<1.35"
 python-dotenv = ">=1.0.1,<1.1"
 packaging = "*"
 
@@ -44,6 +45,40 @@ pytest = "*"
 [tool.pixi.feature.test.tasks]
 run_tests = "pytest tests"
 
+[tool.pixi.feature.fmt.dependencies]
+# Formatting python
+ruff = ">=0.5.0,<0.6"
+pre-commit = ">=3.7.1,<4"
+pre-commit-hooks = ">=4.6.0,<5"
+typos = ">=1.23.1,<2"
+mypy = ">=1.10.1,<2"
+
+[tool.pixi.feature.fmt.tasks]
+# Format recipes using ruff
+fmt = "ruff format"
+check-fmt = "ruff check --fix"
+
+pre-commit-install = "pre-commit-install"
+pre-commit-run = "pre-commit run"
+
+[tool.pixi.feature.type-checking.dependencies]
+types-pyyaml = ">=6.0.12.20240311,<6.0.13"
+types-requests = ">=2.31.0,<2.32"
+mypy = ">=1.10.1,<2"
+
+[tool.pixi.feature.type-checking.tasks]
+type-check = "mypy src"
+
+
 
 [tool.pixi.environments]
 test = {features = ["test"], solve-group = "default"}
+fmt = {features = ["fmt"], solve-group = "default"}
+type-checking = { features = ["type-checking"] }
+
+
+[tool.pyright]
+venv = "default"
+pythonVersion = "3.12"
+venvPath = ".pixi/envs"
+exclude = [".pixi/**", ".pytest_cache/**", "**/__pycache__"]
