@@ -18,7 +18,7 @@ def get_subdir_repodata(subdir: str) -> dict:
     url = f"https://conda.anaconda.org/conda-forge/{subdir}/repodata.json"
     response = requests.get(url)
     if not response.ok:
-        logging.error(f"Requst for repodata to {url} failed. {response.reason}")
+        logging.error(f"Request for repodata to {url} failed. {response.reason}")
 
     response.raise_for_status()
 
