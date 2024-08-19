@@ -47,4 +47,3 @@ More simplified version of our mapping is stored here: `files/mapping_as_graysku
 
 
 Developed with ❤️ at [prefix.dev](https://prefix.dev).
-

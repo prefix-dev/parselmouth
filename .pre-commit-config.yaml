@@ -1,0 +1,48 @@
+exclude: (^.pixi/|.snap|^files/)
+repos:
+  - repo: local
+    hooks:
+      - id: pixi-install
+        name: pixi-install
+        entry: pixi install -e fmt
+        language: system
+        always_run: true
+        require_serial: true
+        pass_filenames: false
+      # pre-commit-hooks
+      - id: check-yaml
+        name: check-yaml
+        entry: pixi run -e fmt check-yaml
+        language: system
+        types: [yaml]
+      - id: end-of-file
+        name: end-of-file
+        entry: pixi run -e fmt end-of-file-fixer
+        language: system
+        types: [text]
+        stages: [commit, push, manual]
+      - id: trailing-whitespace
+        name: trailing-whitespace
+        entry: pixi run -e fmt trailing-whitespace-fixer
+        language: system
+        types: [text]
+        stages: [commit, push, manual]
+      # Use ruff for python examples
+      - id: ruff
+        name: ruff
+        entry: pixi run -e fmt ruff check --fix --exit-non-zero-on-fix --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+      - id: ruff-format
+        name: ruff-format
+        entry: pixi run -e fmt ruff format --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+      # typos
+      - id: typos
+        name: typos
+        entry: pixi run -e fmt typos --write-changes --force-exclude
+        language: system
+        types: [text]
