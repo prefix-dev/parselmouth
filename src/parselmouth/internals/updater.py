@@ -1,5 +1,4 @@
 import json
-import sys
 import os
 import re
 from typing import Optional
@@ -7,12 +6,12 @@ from conda_forge_metadata.types import ArtifactData
 import concurrent.futures
 import logging
 from packaging.version import parse
-from parselmouth.conda_forge import (
+from parselmouth.internals.conda_forge import (
     get_all_packages_by_subdir,
     get_artifact_info,
 )
-from parselmouth.s3 import s3_client
-from parselmouth.utils import normalize
+from parselmouth.internals.s3 import s3_client
+from parselmouth.internals.utils import normalize
 
 
 names_mapping: dict[str, dict] = {}
@@ -85,6 +84,7 @@ def main(
     subdir_letter: str,
     output_dir: str = "output_index",
     partial_output_dir: str = "output",
+    upload: bool = False,
 ):
     subdir, letter = subdir_letter.split("@")
 
@@ -95,6 +95,8 @@ def main(
 
     repodatas = get_all_packages_by_subdir(subdir)
 
+    total_packages = set()
+
     for idx, package_name in enumerate(repodatas):
         if not package_name.startswith(letter):
             continue
@@ -103,8 +105,13 @@ def main(
         sha256 = package["sha256"]
 
         if sha256 not in existing_mapping_data:
+            # trying to get packages info using all backends.
+            # note: streamed is not supported for .tar.gz
             all_packages.append((package_name, "oci"))
             all_packages.append((package_name, "libcfgraph"))
+            if package_name.endswith(".conda"):
+                all_packages.append((package_name, "streamed"))
+            total_packages.add(package_name)
 
     total = 0
     logging.warning(f"Total packages for processing: {len(all_packages)} for {subdir}")
@@ -115,7 +122,7 @@ def main(
                 subdir=subdir,
                 artifact=package_name,
                 backend=backend_type,
-            ): package_name
+            ): (package_name, backend_type)
             for (package_name, backend_type) in all_packages
         }
 
@@ -123,7 +130,7 @@ def main(
             total += 1
             if total % 1000 == 0:
                 logging.warning(f"Done {total} from {len(all_packages)}")
-            package_name = futures[done]
+            package_name, backend_type = futures[done]
             try:
                 artifact: Optional[ArtifactData] = done.result()
                 if artifact:
@@ -166,33 +173,46 @@ def main(
                             "package_name": package_name,
                             "direct_url": direct_url,
                         }
+                else:
+                    logging.warning(
+                        f"Could not get artifact for {package_name} using backend: {backend_type}"
+                    )
 
             except Exception as e:
                 logging.error(f"An error occurred: {e} for package {package_name}")
 
     total = 0
 
-    logging.warning(f"Starting to dump to S3 for {subdir}")
+    if upload:
+        logging.warning(f"Starting to dump to S3 for {subdir}")
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = {
-            executor.submit(
-                s3_client.upload_mapping,
-                file_body=pkg_body,
-                file_name=package_hash,
-            ): package_hash
-            for package_hash, pkg_body in names_mapping.items()
-        }
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            upload_futures = {
+                executor.submit(
+                    s3_client.upload_mapping,
+                    file_body=pkg_body,
+                    file_name=package_hash,
+                ): package_hash
+                for package_hash, pkg_body in names_mapping.items()
+            }
 
-        for done in concurrent.futures.as_completed(futures):
-            total += 1
-            if total % 1000 == 0:
-                logging.warning(f"Done {total} dumping to S3 from {len(names_mapping)}")
-            pkg_hash = futures[done]
-            try:
-                done.result()
-            except Exception as e:
-                logging.error(f"could not upload it {pkg_hash} {e}")
+            for done in concurrent.futures.as_completed(upload_futures):
+                total += 1
+                if total % 1000 == 0:
+                    logging.warning(
+                        f"Done {total} dumping to S3 from {len(names_mapping)}"
+                    )
+                pkg_hash = upload_futures[done]
+                try:
+                    done.result()
+                except Exception as e:
+                    logging.error(f"could not upload it {pkg_hash} {e}")
+    else:
+        logging.warning(f"Uploading is disabled for {subdir}. Skipping it.")
+
+    logging.warning(
+        f"Processed {len(names_mapping)} packages out of {len(total_packages)}"
+    )
 
     partial_json_name = f"{subdir}@{letter}.json"
 
@@ -201,7 +221,3 @@ def main(
     os.makedirs(partial_output_dir, exist_ok=True)
     with open(f"{partial_output_dir}/{partial_json_name}", mode="w") as mapping_file:
         json.dump(names_mapping, mapping_file)
-
-
-if __name__ == "__main__":
-    main(sys.argv[1])

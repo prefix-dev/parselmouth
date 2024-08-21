@@ -169,3 +169,6 @@ mapping/*# pixi environments
 .pixi
 # pixi environments
 .pixi
+
+output/
+output_index/

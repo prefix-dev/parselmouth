@@ -2,8 +2,11 @@ import json
 import os
 import re
 
-from parselmouth.conda_forge import get_all_archs_available, get_subdir_repodata
-from parselmouth.s3 import s3_client
+from parselmouth.internals.conda_forge import (
+    get_all_archs_available,
+    get_subdir_repodata,
+)
+from parselmouth.internals.s3 import s3_client
 
 
 dist_info_pattern = r"([^/]+)-(\d+[^/]*)\.dist-info\/METADATA"
@@ -13,12 +16,12 @@ dist_pattern_compiled = re.compile(dist_info_pattern)
 egg_pattern_compiled = re.compile(egg_info_pattern)
 
 
-def main(output_dir: str = "output_index"):
+def main(output_dir: str, check_if_exists: bool):
     subdirs = get_all_archs_available()
 
     all_packages: list[tuple[str, str]] = []
 
-    existing_mapping_data = s3_client.get_mapping()
+    existing_mapping_data = s3_client.get_mapping() if check_if_exists else {}
 
     letters = set()
 
@@ -44,7 +47,3 @@ def main(output_dir: str = "output_index"):
     json_letters = json.dumps(list(letters))
 
     print(json_letters)
-
-
-if __name__ == "__main__":
-    main()

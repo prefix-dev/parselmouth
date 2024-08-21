@@ -1,5 +1,5 @@
-from parselmouth.conda_forge import get_subdir_repodata
-from parselmouth.s3 import S3
+from parselmouth.internals.conda_forge import get_subdir_repodata
+from parselmouth.internals.s3 import S3
 
 
 class MockS3(S3):

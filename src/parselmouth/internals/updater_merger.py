@@ -2,10 +2,10 @@ import json
 import os
 import logging
 
-from parselmouth.s3 import s3_client
+from parselmouth.internals.s3 import s3_client
 
 
-def main(output_dir: str = "output"):
+def main(output_dir: str):
     existing_mapping_data = s3_client.get_mapping()
 
     total_new_files = 0
@@ -20,7 +20,3 @@ def main(output_dir: str = "output"):
     logging.info(f"Total new files {total_new_files}")
 
     s3_client.upload_mapping(existing_mapping_data, "index.json")
-
-
-if __name__ == "__main__":
-    main()

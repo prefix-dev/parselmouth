@@ -1,7 +1,7 @@
 import json
 import os
 from pathlib import Path
-from parselmouth import updater
+from parselmouth.internals import updater
 from conftests import MockS3, mocked_get_all_packages_by_subdir
 
 
@@ -22,7 +22,10 @@ def test_updater(capsys, tmp_path):
     index_json.write_text(json.dumps(test_s3_client._uploaded_mapping))
 
     updater.main(
-        "linux-64@p", output_dir=tmp_output_dir, partial_output_dir=tmp_partial_dir
+        "linux-64@p",
+        output_dir=tmp_output_dir,
+        partial_output_dir=tmp_partial_dir,
+        upload=True,
     )
 
     # conda-forge never deletes packages
