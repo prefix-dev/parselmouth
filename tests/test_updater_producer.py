@@ -10,7 +10,7 @@ def test_updater_producer_catch_new_packages(tmp_path, capsys):
     updater_producer.s3_client = test_s3_client
 
     tmp_dir = tmp_path / "tmp_output_index"
-    updater_producer.main(output_dir=tmp_dir)
+    updater_producer.main(output_dir=tmp_dir, check_if_exists=True)
 
     captured = capsys.readouterr()
 
