@@ -1,5 +1,5 @@
 import json
-from parselmouth.s3 import s3_client
+from parselmouth.internals.s3 import s3_client
 
 
 def format_and_save_mapping(mapping: dict, mapping_name: str = "mapping_as_grayskull"):

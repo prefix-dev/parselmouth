@@ -37,7 +37,7 @@ jobs:
           run: |
             # Run your script here to produce a list of missing subdirs and letters
             # example: linux-64@p linux-64@d
-            message=$(pixi run python src/parselmouth/updater_producer.py)
+            message=$(pixi run parselmouth updater-producer)
             echo $message
             echo "string_list=$message" >> $GITHUB_OUTPUT
           env:
@@ -84,7 +84,7 @@ jobs:
             path: output_index
 
       - name: Get artifact info for subdir@letter and save into partial index
-        run: pixi run python src/parselmouth/updater.py ${{ matrix.subdirs }}
+        run: pixi run parselmouth updater ${{ matrix.subdirs }} --upload
         env:
             R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
@@ -123,7 +123,7 @@ jobs:
             path: output
 
         - name: Combine all partial index and save into S3 index
-          run: pixi run python src/parselmouth/updater_merger.py
+          run: pixi run parselmouth updater-merger
           env:
             R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}

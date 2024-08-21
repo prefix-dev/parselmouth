@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from conftests import MockS3
-from parselmouth import updater_producer
+from parselmouth.internals import updater_producer
 
 
 def test_updater_producer_catch_new_packages(tmp_path, capsys):
