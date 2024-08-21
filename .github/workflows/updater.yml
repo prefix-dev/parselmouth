@@ -152,7 +152,7 @@ jobs:
 
       - name: Update grayskull mapping and compressed mapping
         run: |
-          pixi run python src/parselmouth/mapping_transformer.py
+          pixi run parselmouth update-mapping
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}

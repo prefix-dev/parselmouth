@@ -6,6 +6,7 @@ from parselmouth.internals.updater_producer import main as updater_producer_main
 from parselmouth.internals.updater import main as updater_main
 from parselmouth.internals.update_one import main as update_one_main
 from parselmouth.internals.updater_merger import main as update_merger_main
+from parselmouth.internals.mapping_transformer import main as mapping_transformer_main
 
 app = typer.Typer()
 
@@ -67,6 +68,15 @@ def updater_merger(output_dir: str = "output"):
     """
 
     update_merger_main(output_dir)
+
+
+@app.command()
+def update_mapping():
+    """
+    This is used to update compressed files in the repository.
+    """
+
+    mapping_transformer_main()
 
 
 @app.command()

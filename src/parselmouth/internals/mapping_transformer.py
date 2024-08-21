@@ -71,7 +71,3 @@ def transform_mapping_in_grayskull_format(existing_mapping: dict):
 def main():
     existing_mapping_data = s3_client.get_mapping()
     transform_mapping_in_grayskull_format(existing_mapping_data)
-
-
-if __name__ == "__main__":
-    main()
