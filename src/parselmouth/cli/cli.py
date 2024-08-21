@@ -92,15 +92,15 @@ def update_one(
         typer.Argument(help="Subdir for the package name"),
     ],
     backend: Annotated[
-        str,
+        str | None,
         typer.Option(
             help="What backend to use for the package. Supported backends: oci, libcfgraph, streamed."
         ),
-    ],
+    ] = None,
     upload: Annotated[
         bool,
         typer.Option(help="Upload or overwrite already existing mapping."),
-    ],
+    ] = False,
 ):
     """
     Check mapping just for one package.
