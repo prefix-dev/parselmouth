@@ -7,6 +7,7 @@ from conda_forge_metadata.types import ArtifactData
 import concurrent.futures
 import logging
 from packaging.version import parse
+from parselmouth.channels import BackendRequestType, SupportedChannels
 from parselmouth.conda_forge import (
     get_all_packages_by_subdir,
     get_artifact_info,
@@ -85,6 +86,7 @@ def main(
     subdir_letter: str,
     output_dir: str = "output_index",
     partial_output_dir: str = "output",
+    channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
 ):
     subdir, letter = subdir_letter.split("@")
 
@@ -93,7 +95,7 @@ def main(
     with open(f"{output_dir}/index.json") as index_file:
         existing_mapping_data: dict = json.load(index_file)
 
-    repodatas = get_all_packages_by_subdir(subdir)
+    repodatas = get_all_packages_by_subdir(subdir, channel)
 
     for idx, package_name in enumerate(repodatas):
         if not package_name.startswith(letter):
@@ -103,8 +105,8 @@ def main(
         sha256 = package["sha256"]
 
         if sha256 not in existing_mapping_data:
-            all_packages.append((package_name, "oci"))
-            all_packages.append((package_name, "libcfgraph"))
+            all_packages.append((package_name, BackendRequestType.OCI))
+            all_packages.append((package_name, BackendRequestType.LIBCFGRAPH))
 
     total = 0
     logging.warning(f"Total packages for processing: {len(all_packages)} for {subdir}")
@@ -115,6 +117,7 @@ def main(
                 subdir=subdir,
                 artifact=package_name,
                 backend=backend_type,
+                channel=channel,
             ): package_name
             for (package_name, backend_type) in all_packages
         }
@@ -204,4 +207,9 @@ def main(
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    channel = (
+        SupportedChannels(sys.argv[2])
+        if len(sys.argv) > 1
+        else SupportedChannels.CONDA_FORGE
+    )
+    main(sys.argv[1], channel=channel)
