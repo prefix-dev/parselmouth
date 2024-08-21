@@ -151,7 +151,4 @@ def main(
     if upload:
         logging.warning("Uploading mapping to S3")
         for sha_name, mapping_body in names_mapping.items():
-            import pdb
-
-            pdb.set_trace()
             s3_client.upload_mapping(mapping_body, sha_name)
