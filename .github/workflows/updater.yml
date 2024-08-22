@@ -123,7 +123,7 @@ jobs:
             path: output
 
         - name: Combine all partial index and save into S3 index
-          run: pixi run parselmouth updater-merger --upload
+          run: pixi run parselmouth updater-merger --upload --channel conda-forge
           env:
             R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
