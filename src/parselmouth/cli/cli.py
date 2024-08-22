@@ -4,11 +4,14 @@ import typer
 
 from parselmouth.internals.updater_producer import main as updater_producer_main
 from parselmouth.internals.updater import main as updater_main
-from parselmouth.internals.update_one import main as update_one_main
+from parselmouth.internals.check_one import main as check_one_main
 from parselmouth.internals.updater_merger import main as update_merger_main
+from parselmouth.internals.legacy_mapping import main as legacy_mapping_main
 from parselmouth.internals.mapping_transformer import main as mapping_transformer_main
 
-app = typer.Typer()
+from parselmouth.internals.channels import SupportedChannels
+
+app = typer.Typer(no_args_is_help=True, pretty_exceptions_enable=False)
 
 
 @app.callback()
@@ -24,12 +27,18 @@ def main():
 
 
 @app.command()
-def updater_producer(output_dir: str = "output_index", check_if_exists: bool = True):
+def updater_producer(
+    output_dir: str = "output_index",
+    check_if_exists: bool = True,
+    channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+):
     """
     Generate the subdir@letter list.
     """
 
-    updater_producer_main(output_dir=output_dir, check_if_exists=check_if_exists)
+    updater_producer_main(
+        output_dir=output_dir, check_if_exists=check_if_exists, channel=channel
+    )
 
 
 @app.command()
@@ -42,6 +51,7 @@ def updater(
     ],
     output_dir: str = "output_index",
     partial_output_dir: str = "output",
+    channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
     upload: bool = False,
 ):
     """
@@ -56,18 +66,32 @@ def updater(
         subdir_letter=subdir_letter,
         output_dir=output_dir,
         partial_output_dir=partial_output_dir,
+        channel=channel,
         upload=upload,
     )
 
 
 @app.command()
-def updater_merger(output_dir: str = "output"):
+def updater_merger(
+    output_dir: str = "output",
+    channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+    upload: bool = False,
+):
     """
     This is used to merge all the partial mappings into a single mapping file during the CI run.
 
     """
 
-    update_merger_main(output_dir)
+    update_merger_main(output_dir, channel=channel, upload=upload)
+
+
+@app.command()
+def update_mapping_legacy():
+    """
+    This is used to update compressed files in the repository.
+    """
+
+    legacy_mapping_main()
 
 
 @app.command()
@@ -80,7 +104,7 @@ def update_mapping():
 
 
 @app.command()
-def update_one(
+def check_one(
     package_name: Annotated[
         str,
         typer.Argument(
@@ -97,6 +121,7 @@ def update_one(
             help="What backend to use for the package. Supported backends: oci, libcfgraph, streamed."
         ),
     ] = None,
+    channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
     upload: Annotated[
         bool,
         typer.Option(help="Upload or overwrite already existing mapping."),
@@ -104,8 +129,9 @@ def update_one(
 ):
     """
     Check mapping just for one package.
+    You can also upload it to S3.
     """
 
-    update_one_main(
+    check_one_main(
         package_name=package_name, subdir=subdir, backend_type=backend, upload=upload
     )

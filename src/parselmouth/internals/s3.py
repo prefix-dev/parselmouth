@@ -1,12 +1,30 @@
 import io
-import json
 import logging
 import os
+from typing import Optional
 from dotenv import load_dotenv
 import boto3
 
+
+from pydantic import BaseModel, RootModel
+
+from parselmouth.internals.channels import SupportedChannels
+
 CURRENT_VERSION = "v0"
-MAPPING_FILE = "index.json"
+
+INDEX_FILE = "index.json"
+
+
+class MappingEntry(BaseModel):
+    pypi_normalized_names: list[str] | None = None
+    versions: dict[str, str] | None = None
+    conda_name: str
+    package_name: str
+    direct_url: list[str] | None = None
+
+
+class IndexMapping(RootModel):
+    root: dict[str, MappingEntry]
 
 
 class S3:
@@ -33,20 +51,34 @@ class S3:
         )
         self._s3_client = s3_client
 
-    def get_mapping(self) -> dict:
+    def get_channel_index(self, channel: SupportedChannels) -> Optional[IndexMapping]:
         assert self._s3_client
-        index_obj_key = f"hash-{CURRENT_VERSION}/{MAPPING_FILE}"
-        response = self._s3_client.get_object(
-            Bucket=self.bucket_name, Key=index_obj_key
-        )
-        return json.loads(response["Body"].read().decode("utf-8"))
+        index_obj_key = f"hash-{CURRENT_VERSION}/{channel}/{INDEX_FILE}"
+        try:
+            response = self._s3_client.get_object(
+                Bucket=self.bucket_name, Key=index_obj_key
+            )
+        except self._s3_client.exceptions.NoSuchKey:
+            return None
 
-    def upload_mapping(self, file_body: dict, file_name: str):
-        output = json.dumps(file_body)
+        return IndexMapping.model_validate_json(response["Body"].read().decode("utf-8"))
+
+    def upload_mapping(self, entry: MappingEntry, file_name: str):
+        output = entry.model_dump_json()
         output_as_file = io.BytesIO(output.encode("utf-8"))
 
         self._s3_client.upload_fileobj(
-            output_as_file, self.bucket_name, f"hash-v0/{file_name}"
+            output_as_file, self.bucket_name, f"hash-{CURRENT_VERSION}/{file_name}"
+        )
+
+    def upload_index(self, entry: IndexMapping, channel: SupportedChannels):
+        output = entry.model_dump_json()
+        output_as_file = io.BytesIO(output.encode("utf-8"))
+
+        self._s3_client.upload_fileobj(
+            output_as_file,
+            self.bucket_name,
+            f"hash-{CURRENT_VERSION}/{channel}/{INDEX_FILE}",
         )
 
 

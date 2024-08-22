@@ -170,5 +170,6 @@ mapping/*# pixi environments
 # pixi environments
 .pixi
 
+# folders using by parselmouth
 output/
 output_index/

@@ -2,11 +2,12 @@ import re
 from typing import Optional
 import logging
 from packaging.version import parse
+from parselmouth.internals.channels import SupportedChannels
 from parselmouth.internals.conda_forge import (
     get_all_packages_by_subdir,
     get_artifact_info,
 )
-from parselmouth.internals.s3 import s3_client
+from parselmouth.internals.s3 import MappingEntry, s3_client
 from parselmouth.internals.utils import normalize
 from rich import print
 
@@ -81,9 +82,10 @@ def main(
     package_name: str,
     subdir: str,
     backend_type: None | str = None,
+    channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
     upload: bool = False,
 ):
-    repodatas = get_all_packages_by_subdir(subdir)
+    repodatas = get_all_packages_by_subdir(subdir, channel)
 
     found_sha = None
 
@@ -97,13 +99,13 @@ def main(
             f"Could not find the package {package_name} in the repodata for subdir {subdir}"
         )
 
-    names_mapping = {}
+    names_mapping: dict[str, MappingEntry] = {}
     backend_types = (
         [backend_type] if backend_type else ["oci", "streamed", "libcfgraph"]
     )
     for backend_type in backend_types:
         artifact = get_artifact_info(
-            subdir=subdir, artifact=package_name, backend=backend_type
+            subdir=subdir, artifact=package_name, backend=backend_type, channel=channel
         )
         if artifact:
             pypi_names_and_versions = get_pypi_names_and_version(artifact["files"])
@@ -132,15 +134,17 @@ def main(
                 direct_url = [url] if isinstance(url, str) else url
 
             if sha not in names_mapping:
-                names_mapping[sha] = {
-                    "pypi_normalized_names": pypi_normalized_names,
-                    "versions": pypi_names_and_versions
-                    if pypi_names_and_versions
-                    else None,
-                    "conda_name": conda_name,
-                    "package_name": package_name,
-                    "direct_url": direct_url,
-                }
+                names_mapping[sha] = MappingEntry.model_validate(
+                    {
+                        "pypi_normalized_names": pypi_normalized_names,
+                        "versions": pypi_names_and_versions
+                        if pypi_names_and_versions
+                        else None,
+                        "conda_name": conda_name,
+                        "package_name": package_name,
+                        "direct_url": direct_url,
+                    }
+                )
             break
 
     if not names_mapping:

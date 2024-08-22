@@ -1,73 +1,82 @@
 import json
-from parselmouth.internals.s3 import s3_client
+import os.path
+
+from pydantic import BaseModel
+from parselmouth.internals.channels import SupportedChannels
+from parselmouth.internals.s3 import IndexMapping, s3_client
 
 
-def format_and_save_mapping(mapping: dict, mapping_name: str = "mapping_as_grayskull"):
+FILES_DIR = "files"
+
+FILES_VERSION = "v0"
+
+
+class CompressedMapping(BaseModel):
+    pypi_names: list[str] | None = None
+
+
+def _format_and_save_mapping(
+    compressed_mapping: dict[str, CompressedMapping],
+    mapping_name: str = "mapping_as_grayskull",
+):
     # now le'ts iterate over created small_mapping
     # and format it for saving in json
-    # where conda_name: pypi_name
-
+    # where conda_name: pypi_names
     map_to_save = {}
 
-    mapping = dict(sorted(mapping.items(), key=lambda t: t[0]))
+    compressed_mapping = dict(sorted(compressed_mapping.items(), key=lambda t: t[0]))
 
-    for conda_name, mapping in mapping.items():
-        pypi_names = mapping["pypi_name"]
-        pypi_name = pypi_names[0] if pypi_names else None
+    for conda_name, mapping in compressed_mapping.items():
+        pypi_names = mapping.pypi_names
 
-        map_to_save[conda_name] = pypi_name
+        map_to_save[conda_name] = pypi_names
 
-    with open(f"files/{mapping_name}.json", "w") as map_file:
+    mapping_location = os.path.join(FILES_DIR, FILES_VERSION, f"{mapping_name}.json")
+
+    with open(mapping_location, "w") as map_file:
         json.dump(map_to_save, map_file)
 
 
-def transform_mapping_in_grayskull_format(existing_mapping: dict):
-    smaller_mapping: dict = {}
+def transform_mapping_and_save(existing_mapping: IndexMapping):
+    compressed_mapping: dict[str, CompressedMapping] = {}
 
-    compressed_mapping: dict = {}
-
-    existing_mapping = dict(
-        sorted(existing_mapping.items(), key=lambda t: t[1]["package_name"])
+    existing_mapping.root = dict(
+        sorted(existing_mapping.root.items(), key=lambda t: t[1].package_name)
     )
 
-    for _cas_hash, mapping in existing_mapping.items():
-        conda_name = mapping["conda_name"]
+    for _cas_hash, mapping in existing_mapping.root.items():
+        conda_name = mapping.conda_name
 
-        pypi_name = mapping["pypi_normalized_names"]
+        pypi_names = mapping.pypi_normalized_names
 
-        if conda_name in smaller_mapping:
-            existing_pypi = smaller_mapping[conda_name]["pypi_name"]
+        if conda_name in compressed_mapping:
+            existing_pypi = compressed_mapping[conda_name].pypi_names
 
-            if existing_pypi != pypi_name:
+            if existing_pypi != pypi_names:
                 # sometimes mapping don't have path
                 # a good example is
                 # aesara-2.0.0-py36hb100763_0.tar.bz2 will have paths
                 # and aesara-2.7.4-py310hd84b9e8_1.tar.bz2 will not
 
-                if pypi_name:
+                if pypi_names:
                     # sometimes and older version of package has a broken path to dist_info or egg_info
                     # here we overwrite the newer one with that old and broken
-                    smaller_mapping[conda_name] = {
-                        "pypi_name": pypi_name,
-                    }
-                    compressed_mapping[conda_name] = {"pypi_name": pypi_name}
+                    compressed_mapping[conda_name] = CompressedMapping(
+                        pypi_names=pypi_names
+                    )
 
         else:
-            if pypi_name:
-                smaller_mapping[conda_name] = {
-                    "pypi_name": pypi_name,
-                    "mapping": mapping,
-                }
-
             # previously we didn't recorded packages that didn't have pypi name
             # now we will have a None pointing to conda name
             # to differentiate if we saw this package or not
-            compressed_mapping[conda_name] = {"pypi_name": pypi_name}
+            compressed_mapping[conda_name] = CompressedMapping(pypi_names=pypi_names)
 
-    format_and_save_mapping(smaller_mapping)
-    format_and_save_mapping(compressed_mapping, "compressed_mapping")
+    _format_and_save_mapping(compressed_mapping, "compressed_mapping")
 
 
-def main():
-    existing_mapping_data = s3_client.get_mapping()
-    transform_mapping_in_grayskull_format(existing_mapping_data)
+def main(channel: SupportedChannels = SupportedChannels.CONDA_FORGE):
+    existing_mapping_data = s3_client.get_channel_index(channel=channel)
+    if not existing_mapping_data:
+        raise ValueError(f"Could not find the index data for channel {channel}")
+
+    transform_mapping_and_save(existing_mapping_data)
