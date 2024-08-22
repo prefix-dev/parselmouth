@@ -84,7 +84,7 @@ jobs:
             path: output_index
 
       - name: Get artifact info for subdir@letter and save into partial index
-        run: pixi run parselmouth updater ${{ matrix.subdirs }} --channel conda-forge
+        run: pixi run parselmouth updater ${{ matrix.subdirs }} --channel conda-forge --upload
         env:
             R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
@@ -152,6 +152,7 @@ jobs:
 
       - name: Update grayskull mapping and compressed mapping
         run: |
+          pixi run parselmouth update-mapping-legacy
           pixi run parselmouth update-mapping
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -168,5 +169,6 @@ jobs:
           git config --local user.name "GitHub Action"
           git add files/mapping_as_grayskull.json
           git add files/compressed_mapping.json
+          git add files/v0
           git commit -m "Update file via GitHub Action" || true
           git push

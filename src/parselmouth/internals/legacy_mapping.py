@@ -94,4 +94,8 @@ def main():
     existing_mapping_data = s3_client.get_channel_index(
         channel=SupportedChannels.CONDA_FORGE
     )
+    if not existing_mapping_data:
+        raise ValueError(
+            f"Could not find the index data for channel {SupportedChannels.CONDA_FORGE}"
+        )
     transform_mapping_in_grayskull_format(existing_mapping_data)
