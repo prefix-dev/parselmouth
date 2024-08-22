@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from conftests import MockS3
 from parselmouth.internals import updater_merger
+from parselmouth.internals.channels import SupportedChannels
 
 
 def test_updater_merger_collects_all_packages_from_folder(tmp_path, capsys):
@@ -14,18 +15,22 @@ def test_updater_merger_collects_all_packages_from_folder(tmp_path, capsys):
 
     os.makedirs(tmp_dir)
 
+    os.makedirs(tmp_dir / "conda-forge")
+
     # make two files
-    tmp_foo: Path = tmp_dir / "linux64@a.json"
+    tmp_foo: Path = tmp_dir / "conda-forge" / "linux64@a.json"
     tmp_foo.touch()
     tmp_foo.write_text(json.dumps({"foo": {"name": "foo"}}))
 
-    tmp_bar: Path = tmp_dir / "linux64@b"
+    tmp_bar: Path = tmp_dir / "conda-forge" / "linux64@b"
     tmp_bar.touch()
     tmp_bar.write_text(json.dumps({"bar": {"name": "bar"}}))
 
-    updater_merger.main(output_dir=tmp_dir)
+    updater_merger.main(
+        output_dir=tmp_dir, channel=SupportedChannels.CONDA_FORGE, upload=True
+    )
 
-    mock_mapping = test_s3_client._uploaded_mapping
+    mock_index = test_s3_client._uploaded_index
 
-    assert "foo" in mock_mapping
-    assert "bar" in mock_mapping
+    assert "foo" in mock_index.root
+    assert "bar" in mock_index.root
