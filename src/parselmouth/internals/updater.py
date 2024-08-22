@@ -88,6 +88,7 @@ def main(
     partial_output_dir: str = "output",
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
     upload: bool = False,
+    force: bool = False,
 ):
     subdir, letter = subdir_letter.split("@")
 
@@ -107,7 +108,7 @@ def main(
         package = repodatas[package_name]
         sha256 = package["sha256"]
 
-        if sha256 not in existing_mapping_data:
+        if sha256 not in existing_mapping_data or force:
             # trying to get packages info using all backends.
             # note: streamed is not supported for .tar.gz
             if package_name.endswith(".conda"):
@@ -117,7 +118,7 @@ def main(
             total_packages.add(package_name)
 
     total = 0
-    logging.warning(f"Total packages for processing: {len(all_packages)} for {subdir}")
+    logging.warning(f"Total packages for processing: {len(all_packages)} for {subdir}.")
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = {
             executor.submit(

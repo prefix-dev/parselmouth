@@ -29,16 +29,14 @@ def main():
 @app.command()
 def updater_producer(
     output_dir: str = "output_index",
-    check_if_exists: bool = True,
+    force: bool = False,
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
 ):
     """
     Generate the subdir@letter list.
     """
 
-    updater_producer_main(
-        output_dir=output_dir, check_if_exists=check_if_exists, channel=channel
-    )
+    updater_producer_main(output_dir=output_dir, force=force, channel=channel)
 
 
 @app.command()
@@ -53,6 +51,7 @@ def updater(
     partial_output_dir: str = "output",
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
     upload: bool = False,
+    force: bool = False,
 ):
     """
     Get all the packages based on subdir@letter and save it in partial_output_dir.
@@ -68,6 +67,7 @@ def updater(
         partial_output_dir=partial_output_dir,
         channel=channel,
         upload=upload,
+        force=force,
     )
 
 
