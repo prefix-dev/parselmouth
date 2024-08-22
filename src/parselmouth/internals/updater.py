@@ -1,22 +1,22 @@
 import json
-import sys
 import os
+from pathlib import Path
 import re
 from typing import Optional
 from conda_forge_metadata.types import ArtifactData
 import concurrent.futures
 import logging
 from packaging.version import parse
-from parselmouth.channels import BackendRequestType, SupportedChannels
-from parselmouth.conda_forge import (
+from parselmouth.internals.channels import BackendRequestType, SupportedChannels
+from parselmouth.internals.conda_forge import (
     get_all_packages_by_subdir,
     get_artifact_info,
 )
-from parselmouth.s3 import s3_client
-from parselmouth.utils import normalize
+from parselmouth.internals.s3 import IndexMapping, MappingEntry, s3_client
+from parselmouth.internals.utils import normalize
 
 
-names_mapping: dict[str, dict] = {}
+names_mapping: IndexMapping = IndexMapping.model_construct(root={})
 
 dist_info_pattern = r"([^/]+)-(\d+[^/]*)\.dist-info\/METADATA"
 egg_info_pattern = r"([^/]+?)-(\d+[^/]*)\.egg-info\/PKG-INFO"
@@ -87,15 +87,18 @@ def main(
     output_dir: str = "output_index",
     partial_output_dir: str = "output",
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+    upload: bool = False,
 ):
     subdir, letter = subdir_letter.split("@")
 
     all_packages: list[tuple[str, str]] = []
 
-    with open(f"{output_dir}/index.json") as index_file:
-        existing_mapping_data: dict = json.load(index_file)
+    index_location = Path(output_dir) / channel / "index.json"
+    existing_mapping_data = IndexMapping.model_validate_json(index_location.read_text())
 
     repodatas = get_all_packages_by_subdir(subdir, channel)
+
+    total_packages = set()
 
     for idx, package_name in enumerate(repodatas):
         if not package_name.startswith(letter):
@@ -105,8 +108,12 @@ def main(
         sha256 = package["sha256"]
 
         if sha256 not in existing_mapping_data:
+            # trying to get packages info using all backends.
+            # note: streamed is not supported for .tar.gz
             all_packages.append((package_name, BackendRequestType.OCI))
-            all_packages.append((package_name, BackendRequestType.LIBCFGRAPH))
+            if package_name.endswith(".conda"):
+                all_packages.append((package_name, BackendRequestType.STREAMED))
+            total_packages.add(package_name)
 
     total = 0
     logging.warning(f"Total packages for processing: {len(all_packages)} for {subdir}")
@@ -118,7 +125,7 @@ def main(
                 artifact=package_name,
                 backend=backend_type,
                 channel=channel,
-            ): package_name
+            ): (package_name, backend_type)
             for (package_name, backend_type) in all_packages
         }
 
@@ -126,7 +133,7 @@ def main(
             total += 1
             if total % 1000 == 0:
                 logging.warning(f"Done {total} from {len(all_packages)}")
-            package_name = futures[done]
+            package_name, backend_type = futures[done]
             try:
                 artifact: Optional[ArtifactData] = done.result()
                 if artifact:
@@ -157,59 +164,69 @@ def main(
                         direct_url = None
                     else:
                         url = source.get("url", None)
-                        direct_url = [url] if isinstance(url, str) else url
+                        direct_url = [str(url)] if isinstance(url, str) else url
 
                     if sha not in names_mapping:
-                        names_mapping[sha] = {
-                            "pypi_normalized_names": pypi_normalized_names,
-                            "versions": pypi_names_and_versions
-                            if pypi_names_and_versions
-                            else None,
-                            "conda_name": conda_name,
-                            "package_name": package_name,
-                            "direct_url": direct_url,
-                        }
+                        names_mapping.root[sha] = MappingEntry.model_validate(
+                            {
+                                "pypi_normalized_names": pypi_normalized_names,
+                                "versions": pypi_names_and_versions
+                                if pypi_names_and_versions
+                                else None,
+                                "conda_name": str(conda_name),
+                                "package_name": package_name,
+                                "direct_url": direct_url,
+                            }
+                        )
+                else:
+                    logging.warning(
+                        f"Could not get artifact for {package_name} using backend: {backend_type}"
+                    )
 
             except Exception as e:
                 logging.error(f"An error occurred: {e} for package {package_name}")
 
     total = 0
 
-    logging.warning(f"Starting to dump to S3 for {subdir}")
+    if upload:
+        logging.warning(f"Starting to dump to S3 for {subdir}")
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = {
-            executor.submit(
-                s3_client.upload_mapping,
-                file_body=pkg_body,
-                file_name=package_hash,
-            ): package_hash
-            for package_hash, pkg_body in names_mapping.items()
-        }
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            upload_futures = {
+                executor.submit(
+                    s3_client.upload_mapping,
+                    entry=pkg_body,
+                    file_name=package_hash,
+                ): package_hash
+                for package_hash, pkg_body in names_mapping.root.items()
+            }
 
-        for done in concurrent.futures.as_completed(futures):
-            total += 1
-            if total % 1000 == 0:
-                logging.warning(f"Done {total} dumping to S3 from {len(names_mapping)}")
-            pkg_hash = futures[done]
-            try:
-                done.result()
-            except Exception as e:
-                logging.error(f"could not upload it {pkg_hash} {e}")
+            for done in concurrent.futures.as_completed(upload_futures):
+                total += 1
+                if total % 1000 == 0:
+                    logging.warning(
+                        f"Done {total} dumping to S3 from {len(names_mapping.root)}"
+                    )
+                pkg_hash = upload_futures[done]
+                try:
+                    done.result()
+                except Exception as e:
+                    logging.error(f"could not upload it {pkg_hash} {e}")
+    else:
+        logging.warning(f"Uploading is disabled for {subdir}. Skipping it.")
+
+    logging.warning(
+        f"Processed {len(names_mapping.root)} packages out of {len(total_packages)}"
+    )
 
     partial_json_name = f"{subdir}@{letter}.json"
 
     logging.warning("Producing partial index.json")
 
-    os.makedirs(partial_output_dir, exist_ok=True)
-    with open(f"{partial_output_dir}/{partial_json_name}", mode="w") as mapping_file:
-        json.dump(names_mapping, mapping_file)
+    partial_output_dir_location = Path(partial_output_dir) / channel
+    os.makedirs(partial_output_dir_location, exist_ok=True)
 
-
-if __name__ == "__main__":
-    channel = (
-        SupportedChannels(sys.argv[2])
-        if len(sys.argv) > 1
-        else SupportedChannels.CONDA_FORGE
-    )
-    main(sys.argv[1], channel=channel)
+    with open(
+        partial_output_dir_location / partial_json_name, mode="w"
+    ) as mapping_file:
+        json.dump(names_mapping.model_dump(), mapping_file)

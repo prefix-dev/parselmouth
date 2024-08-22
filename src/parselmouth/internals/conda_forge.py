@@ -3,7 +3,7 @@ import logging
 from conda_forge_metadata.artifact_info.info_json import get_artifact_info_as_json
 from urllib.parse import urljoin
 
-from parselmouth.channels import ChannelUrls, SupportedChannels
+from parselmouth.internals.channels import ChannelUrls, SupportedChannels
 
 
 def get_all_archs_available(channel: SupportedChannels) -> list[str]:

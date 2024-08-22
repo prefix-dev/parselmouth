@@ -23,7 +23,7 @@ jobs:
 
         - name: run tests
           run: |
-           pixi run run_tests
+           pixi run run-tests
 
   pre-commit:
     runs-on: ubuntu-latest

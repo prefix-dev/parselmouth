@@ -2,7 +2,7 @@ import json
 import os
 from pathlib import Path
 from conftests import MockS3
-from parselmouth import updater_merger
+from parselmouth.internals import updater_merger
 
 
 def test_updater_merger_collects_all_packages_from_folder(tmp_path, capsys):
