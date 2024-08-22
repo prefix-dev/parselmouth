@@ -111,11 +111,9 @@ def main(
             # trying to get packages info using all backends.
             # note: streamed is not supported for .tar.gz
             if package_name.endswith(".conda"):
-                # if package_name.endswith(".conda") or package_name.endswith(".tar.bz2"):
                 all_packages.append((package_name, BackendRequestType.STREAMED))
             else:
                 logging.warning(f"Skipping {package_name} is not a .conda package")
-                # all_packages.append((package_name, BackendRequestType.OCI))
             total_packages.add(package_name)
 
     total = 0
