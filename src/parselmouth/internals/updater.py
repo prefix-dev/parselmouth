@@ -114,11 +114,6 @@ def main(
                 all_packages.append((package_name, BackendRequestType.STREAMED))
                 total_packages.add(package_name)
 
-            # else:
-            # logging.warning(f"Skipping {package_name} is not a .conda package")
-            # all_packages.append((package_name, BackendRequestType.OCI))
-            # total_packages.add(package_name)
-
     total = 0
     logging.warning(f"Total packages for processing: {len(all_packages)} for {subdir}")
     with concurrent.futures.ThreadPoolExecutor() as executor:
