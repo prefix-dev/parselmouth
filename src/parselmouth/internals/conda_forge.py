@@ -1,6 +1,9 @@
 import requests
 import logging
-from conda_forge_metadata.artifact_info.info_json import get_artifact_info_as_json
+from conda_forge_metadata.artifact_info.info_json import (
+    get_artifact_info_as_json,
+    info_json_from_tar_generator,
+)
 from urllib.parse import urljoin
 
 from parselmouth.internals.channels import ChannelUrls, SupportedChannels
@@ -55,4 +58,13 @@ def get_artifact_info(
     backend,
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
 ):
+    if backend == "streamed" and artifact.endswith(".tar.bz2"):
+        # bypass get_artifact_info_as_json as it does not support .tar.bz2
+        from conda_forge_metadata.streaming import get_streamed_artifact_data
+
+        return info_json_from_tar_generator(
+            get_streamed_artifact_data(channel, subdir, artifact),
+            skip_files_suffixes=(".pyc", ".txt"),
+        )
+
     return get_artifact_info_as_json(channel, subdir, artifact, backend)
