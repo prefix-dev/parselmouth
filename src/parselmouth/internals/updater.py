@@ -112,9 +112,7 @@ def main(
             # note: streamed is not supported for .tar.gz
             if package_name.endswith(".conda"):
                 all_packages.append((package_name, BackendRequestType.STREAMED))
-            else:
-                logging.warning(f"Skipping {package_name} is not a .conda package")
-            total_packages.add(package_name)
+                total_packages.add(package_name)
 
     total = 0
     logging.warning(f"Total packages for processing: {len(all_packages)} for {subdir}")
