@@ -16,7 +16,7 @@ def main(output_dir: str, channel: SupportedChannels, upload: bool):
     output_dir_location = Path(output_dir) / channel
 
     for filename in os.listdir(output_dir_location):
-        partial_file = Path(output_dir) / filename
+        partial_file = Path(output_dir_location) / filename
 
         mapping_entry = MappingEntry.model_validate_json(partial_file.read_text())
         existing_mapping_data.root.update(mapping_entry)
