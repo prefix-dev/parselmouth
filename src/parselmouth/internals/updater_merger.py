@@ -19,7 +19,7 @@ def main(output_dir: str, channel: SupportedChannels, upload: bool):
         partial_file = Path(output_dir_location) / filename
 
         mapping_entry = IndexMapping.model_validate_json(partial_file.read_text())
-        existing_mapping_data.root.update(mapping_entry)
+        existing_mapping_data.root.update(mapping_entry.root)
         total_new_files += 1
 
     logging.info(f"Total new files {total_new_files}")
