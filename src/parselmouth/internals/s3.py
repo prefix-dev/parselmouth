@@ -1,5 +1,4 @@
 import io
-import json
 import logging
 import os
 from typing import Optional
@@ -68,10 +67,7 @@ class S3:
         except self._s3_client.exceptions.NoSuchKey:
             return None
 
-        loaded_json = json.loads(response["Body"].read().decode("utf-8"))
-        loaded_json.pop("root")
-
-        return IndexMapping.model_validate(loaded_json)
+        return IndexMapping.model_validate_json(response["Body"].read().decode("utf-8"))
 
     def upload_mapping(self, entry: MappingEntry, file_name: str):
         output = entry.model_dump_json()
