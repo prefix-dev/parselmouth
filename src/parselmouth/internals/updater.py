@@ -162,7 +162,6 @@ def main(
     existing_mapping_data = IndexMapping.model_validate_json(index_location.read_text())
 
     repodatas = get_all_packages_by_subdir(subdir, channel)
-
     total_packages = set()
 
     for idx, package_name in enumerate(repodatas):
@@ -175,9 +174,13 @@ def main(
         if sha256 not in existing_mapping_data:
             # trying to get packages info using all backends.
             # note: streamed is not supported for .tar.gz
-            if package_name.endswith(".conda"):
+            if package_name.endswith(".conda") or package_name.endswith(".tar.bz2"):
                 all_packages.append((package_name, BackendRequestType.STREAMED))
                 total_packages.add(package_name)
+            else:
+                logging.warning(
+                    f"Skipping {package_name} as it is not a .conda or .tar.bz2"
+                )
 
     total = 0
     logging.warning(f"Total packages for processing: {len(all_packages)} for {subdir}")

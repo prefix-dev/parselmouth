@@ -95,12 +95,12 @@ def update_mapping_legacy():
 
 
 @app.command()
-def update_mapping():
+def update_mapping(channel: SupportedChannels = SupportedChannels.CONDA_FORGE):
     """
     This is used to update compressed files in the repository.
     """
 
-    mapping_transformer_main()
+    mapping_transformer_main(channel=channel)
 
 
 @app.command()
