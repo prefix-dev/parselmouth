@@ -1,19 +1,26 @@
+import asyncio
+import io
 import json
 import os
 from pathlib import Path
 import re
 from typing import Optional
+import aioboto3.session
+import botocore.client
 from conda_forge_metadata.types import ArtifactData
 import concurrent.futures
 import logging
+from dotenv import load_dotenv
 from packaging.version import parse
 from parselmouth.internals.channels import BackendRequestType, SupportedChannels
 from parselmouth.internals.conda_forge import (
     get_all_packages_by_subdir,
     get_artifact_info,
 )
-from parselmouth.internals.s3 import IndexMapping, MappingEntry, s3_client
+from parselmouth.internals.s3 import IndexMapping, MappingEntry
 from parselmouth.internals.utils import normalize
+
+import aioboto3
 
 
 names_mapping: IndexMapping = IndexMapping.model_construct(root={})
@@ -80,6 +87,64 @@ def get_pypi_names_and_version(files: list[str]) -> dict[str, str]:
             package_names[normalize(package_name)] = version
 
     return package_names
+
+
+async def async_upload_package(
+    s3_client, pkg_body: str, package_hash, bucket_name: str
+):
+    try:
+        # output = pkg_body.model_dump_json()
+        output_as_file = io.BytesIO(pkg_body.encode("utf-8"))
+
+        await s3_client.upload_fileobj(
+            output_as_file, bucket_name, f"hash-v0/{package_hash}"
+        )
+    except Exception as e:
+        logging.error(f"could not upload it {package_hash} {e}")
+
+
+async def upload_to_s3(names_mapping: IndexMapping):
+    total = 0
+    load_dotenv()
+    account_id = os.getenv("R2_PREFIX_ACCOUNT_ID", "default")
+    access_key_id = os.getenv("R2_PREFIX_ACCESS_KEY_ID", "")
+    access_key_secret = os.getenv("R2_PREFIX_SECRET_ACCESS_KEY", "")
+    bucket_name = os.getenv("R2_PREFIX_BUCKET", "conda")
+
+    session = aioboto3.Session(
+        # service_name="s3",
+        # endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
+        aws_access_key_id=f"{access_key_id}",
+        aws_secret_access_key=f"{access_key_secret}",
+        region_name="eeur",  # Must be one of: wnam, enam, weur, eeur, apac, auto
+    )
+    config = botocore.client.Config(
+        max_pool_connections=50,
+    )
+    async with session.client(
+        "s3",
+        endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
+        config=config,
+    ) as s3_client:
+        tasks = [
+            asyncio.ensure_future(
+                async_upload_package(
+                    s3_client, pkg_body.model_dump_json(), package_hash, bucket_name
+                )
+            )
+            for package_hash, pkg_body in names_mapping.root.items()
+        ]
+        # await asyncio.gather(*tasks)
+
+        for task in asyncio.as_completed(tasks):
+            await task
+            total += 1
+            if total % 1000 == 0:
+                logging.warning(
+                    f"Done {total} dumping to S3 from {len(names_mapping.root)}"
+                )
+            # if error:
+            #     logging.error(f"could not upload it {package_hash} {error}")
 
 
 def main(
@@ -190,27 +255,29 @@ def main(
     if upload:
         logging.warning(f"Starting to dump to S3 for {subdir}")
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            upload_futures = {
-                executor.submit(
-                    s3_client.upload_mapping,
-                    entry=pkg_body,
-                    file_name=package_hash,
-                ): package_hash
-                for package_hash, pkg_body in names_mapping.root.items()
-            }
+        asyncio.run(upload_to_s3(names_mapping))
 
-            for done in concurrent.futures.as_completed(upload_futures):
-                total += 1
-                if total % 1000 == 0:
-                    logging.warning(
-                        f"Done {total} dumping to S3 from {len(names_mapping.root)}"
-                    )
-                pkg_hash = upload_futures[done]
-                try:
-                    done.result()
-                except Exception as e:
-                    logging.error(f"could not upload it {pkg_hash} {e}")
+        # with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        #     upload_futures = {
+        #         executor.submit(
+        #             s3_client.upload_mapping,
+        #             entry=pkg_body,
+        #             file_name=package_hash,
+        #         ): package_hash
+        #         for package_hash, pkg_body in names_mapping.root.items()
+        #     }
+
+        #     for done in concurrent.futures.as_completed(upload_futures):
+        #         total += 1
+        #         if total % 1000 == 0:
+        #             logging.warning(
+        #                 f"Done {total} dumping to S3 from {len(names_mapping.root)}"
+        #             )
+        #         pkg_hash = upload_futures[done]
+        #         try:
+        #             done.result()
+        #         except Exception as e:
+        #             logging.error(f"could not upload it {pkg_hash} {e}")
     else:
         logging.warning(f"Uploading is disabled for {subdir}. Skipping it.")
 

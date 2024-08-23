@@ -43,6 +43,7 @@ python-dotenv = ">=1.0.1,<1.1"
 packaging = "*"
 typer = ">=0.12.4,<0.13"
 pydantic = ">=2.8.2,<3"
+aioboto3 = ">=13.1.1,<14"
 
 [tool.pixi.feature.test.dependencies]
 pytest = "*"

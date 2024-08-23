@@ -31,6 +31,8 @@ def _format_and_save_mapping(
 
         map_to_save[conda_name] = pypi_names
 
+    os.makedirs(os.path.join(FILES_DIR, FILES_VERSION), exist_ok=True)
+
     mapping_location = os.path.join(FILES_DIR, FILES_VERSION, f"{mapping_name}.json")
 
     with open(mapping_location, "w") as map_file:

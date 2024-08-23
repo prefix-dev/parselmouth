@@ -4,6 +4,7 @@ import os
 from typing import Optional
 from dotenv import load_dotenv
 import boto3
+from botocore.config import Config
 
 
 from pydantic import BaseModel, RootModel
@@ -42,12 +43,17 @@ class S3:
 
         self.bucket_name = bucket_name
 
+        boto_config = Config(
+            max_pool_connections=50,
+        )
+
         s3_client = boto3.client(
             service_name="s3",
             endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
             aws_access_key_id=f"{access_key_id}",
             aws_secret_access_key=f"{access_key_secret}",
             region_name="eeur",  # Must be one of: wnam, enam, weur, eeur, apac, auto
+            config=boto_config,
         )
         self._s3_client = s3_client
 
