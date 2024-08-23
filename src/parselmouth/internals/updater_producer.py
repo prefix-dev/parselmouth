@@ -18,16 +18,13 @@ dist_pattern_compiled = re.compile(dist_info_pattern)
 egg_pattern_compiled = re.compile(egg_info_pattern)
 
 
-def main(output_dir: str, check_if_exists: bool, channel: SupportedChannels):
+def main(output_dir: str, force: bool, channel: SupportedChannels):
     subdirs = get_all_archs_available(channel)
 
     all_packages: list[tuple[str, str]] = []
 
-    if check_if_exists:
-        existing_mapping_data = s3_client.get_channel_index(channel=channel)
-        if not existing_mapping_data:
-            existing_mapping_data = IndexMapping(root={})
-    else:
+    existing_mapping_data = s3_client.get_channel_index(channel=channel)
+    if not existing_mapping_data:
         existing_mapping_data = IndexMapping(root={})
 
     letters = set()
@@ -43,7 +40,11 @@ def main(output_dir: str, check_if_exists: bool, channel: SupportedChannels):
             package = repodatas[package_name]
             sha256 = package["sha256"]
 
-            if sha256 not in existing_mapping_data.root:
+            if force:
+                all_packages.append(package_name)
+                letters.add(f"{subdir}@{package_name[0]}")
+
+            elif sha256 not in existing_mapping_data.root:
                 all_packages.append(package_name)
                 letters.add(f"{subdir}@{package_name[0]}")
 
