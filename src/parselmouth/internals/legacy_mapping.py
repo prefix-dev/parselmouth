@@ -11,10 +11,13 @@ class SmallMapping(BaseModel):
 
 
 class CompressedMapping(BaseModel):
-    pypi_name: list[str]
+    pypi_name: list[str] | None
 
 
-def format_and_save_mapping(mapping: dict, mapping_name: str = "mapping_as_grayskull"):
+def format_and_save_mapping(
+    mapping: dict[str, SmallMapping] | dict[str, CompressedMapping],
+    mapping_name: str = "mapping_as_grayskull",
+):
     # now le'ts iterate over created small_mapping
     # and format it for saving in json
     # where conda_name: pypi_name
@@ -23,8 +26,8 @@ def format_and_save_mapping(mapping: dict, mapping_name: str = "mapping_as_grays
 
     mapping = dict(sorted(mapping.items(), key=lambda t: t[0]))
 
-    for conda_name, mapping in mapping.items():
-        pypi_names = mapping["pypi_name"]
+    for conda_name, mapping_value in mapping.items():
+        pypi_names = mapping_value.pypi_name
         pypi_name = pypi_names[0] if pypi_names else None
 
         map_to_save[conda_name] = pypi_name
