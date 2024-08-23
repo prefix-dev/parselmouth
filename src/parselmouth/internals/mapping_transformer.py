@@ -17,7 +17,8 @@ class CompressedMapping(BaseModel):
 
 def _format_and_save_mapping(
     compressed_mapping: dict[str, CompressedMapping],
-    mapping_name: str = "mapping_as_grayskull",
+    channel: SupportedChannels,
+    mapping_name: str = "mapping",
 ):
     # now le'ts iterate over created small_mapping
     # and format it for saving in json
@@ -31,15 +32,19 @@ def _format_and_save_mapping(
 
         map_to_save[conda_name] = pypi_names
 
-    os.makedirs(os.path.join(FILES_DIR, FILES_VERSION), exist_ok=True)
+    os.makedirs(os.path.join(FILES_DIR, FILES_VERSION, channel), exist_ok=True)
 
-    mapping_location = os.path.join(FILES_DIR, FILES_VERSION, f"{mapping_name}.json")
+    mapping_location = os.path.join(
+        FILES_DIR, FILES_VERSION, channel, f"{mapping_name}.json"
+    )
 
     with open(mapping_location, "w") as map_file:
         json.dump(map_to_save, map_file)
 
 
-def transform_mapping_and_save(existing_mapping: IndexMapping):
+def transform_mapping_and_save(
+    existing_mapping: IndexMapping, channel: SupportedChannels
+):
     compressed_mapping: dict[str, CompressedMapping] = {}
 
     existing_mapping.root = dict(
@@ -73,7 +78,7 @@ def transform_mapping_and_save(existing_mapping: IndexMapping):
             # to differentiate if we saw this package or not
             compressed_mapping[conda_name] = CompressedMapping(pypi_names=pypi_names)
 
-    _format_and_save_mapping(compressed_mapping, "compressed_mapping")
+    _format_and_save_mapping(compressed_mapping, channel, "compressed_mapping")
 
 
 def main(channel: SupportedChannels = SupportedChannels.CONDA_FORGE):
@@ -81,4 +86,4 @@ def main(channel: SupportedChannels = SupportedChannels.CONDA_FORGE):
     if not existing_mapping_data:
         raise ValueError(f"Could not find the index data for channel {channel}")
 
-    transform_mapping_and_save(existing_mapping_data)
+    transform_mapping_and_save(existing_mapping_data, channel)

@@ -1,10 +1,9 @@
-import json
 import os
 import logging
 from pathlib import Path
 
 from parselmouth.internals.channels import SupportedChannels
-from parselmouth.internals.s3 import IndexMapping, s3_client
+from parselmouth.internals.s3 import IndexMapping, MappingEntry, s3_client
 
 
 def main(output_dir: str, channel: SupportedChannels, upload: bool):
@@ -17,10 +16,11 @@ def main(output_dir: str, channel: SupportedChannels, upload: bool):
     output_dir_location = Path(output_dir) / channel
 
     for filename in os.listdir(output_dir_location):
-        with open(output_dir_location / filename) as partial_file:
-            partial_json = json.load(partial_file)
-            existing_mapping_data.root.update(partial_json)
-            total_new_files += 1
+        partial_file = Path(output_dir) / filename
+
+        mapping_entry = MappingEntry.model_validate_json(partial_file.read_text())
+        existing_mapping_data.root.update(mapping_entry)
+        total_new_files += 1
 
     logging.info(f"Total new files {total_new_files}")
 
