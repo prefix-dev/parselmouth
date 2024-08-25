@@ -1,4 +1,4 @@
-# name: Run updater that will check for conda-forge packages
+# name: Run updater for conda-forge that will check for conda-forge packages
 
 on:
     schedule:
