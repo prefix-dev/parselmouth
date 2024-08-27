@@ -59,6 +59,13 @@ def get_pypi_names_and_version(files: list[str]) -> dict[str, str]:
     """
     package_names: dict[str, str] = {}
     for file_name in files:
+        file_path = Path(file_name)
+        # sometimes, packages like setuptools have some stuff vendored
+        # that our regex will catch:
+        # site-packages/setuptools/_vendor/zipp-3.19.2.dist-info/RECORD
+        # but in reality we don't want to include itages:
+        if "_vendor" in file_path.parts:
+            continue
         match = dist_pattern_compiled.search(file_name) or egg_pattern_compiled.search(
             file_name
         )
@@ -134,7 +141,6 @@ async def upload_to_s3(names_mapping: IndexMapping):
             )
             for package_hash, pkg_body in names_mapping.root.items()
         ]
-        # await asyncio.gather(*tasks)
 
         for task in asyncio.as_completed(tasks):
             await task
@@ -143,8 +149,6 @@ async def upload_to_s3(names_mapping: IndexMapping):
                 logging.warning(
                     f"Done {total} dumping to S3 from {len(names_mapping.root)}"
                 )
-            # if error:
-            #     logging.error(f"could not upload it {package_hash} {error}")
 
 
 def main(
@@ -269,30 +273,9 @@ def main(
 
     if upload:
         logging.warning(f"Starting to dump to S3 for {subdir}")
-
+        # using async approach over multithread is much more faster
+        # same should be done for extracting the metadata
         asyncio.run(upload_to_s3(names_mapping))
-
-        # with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        #     upload_futures = {
-        #         executor.submit(
-        #             s3_client.upload_mapping,
-        #             entry=pkg_body,
-        #             file_name=package_hash,
-        #         ): package_hash
-        #         for package_hash, pkg_body in names_mapping.root.items()
-        #     }
-
-        #     for done in concurrent.futures.as_completed(upload_futures):
-        #         total += 1
-        #         if total % 1000 == 0:
-        #             logging.warning(
-        #                 f"Done {total} dumping to S3 from {len(names_mapping.root)}"
-        #             )
-        #         pkg_hash = upload_futures[done]
-        #         try:
-        #             done.result()
-        #         except Exception as e:
-        #             logging.error(f"could not upload it {pkg_hash} {e}")
     else:
         logging.warning(f"Uploading is disabled for {subdir}. Skipping it.")
 

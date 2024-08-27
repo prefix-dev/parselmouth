@@ -1,14 +1,13 @@
 import re
 from typing import Optional
 import logging
-from packaging.version import parse
 from parselmouth.internals.channels import SupportedChannels
 from parselmouth.internals.conda_forge import (
     get_all_packages_by_subdir,
     get_artifact_info,
 )
 from parselmouth.internals.s3 import MappingEntry, s3_client
-from parselmouth.internals.utils import normalize
+from parselmouth.internals.updater import get_pypi_names_and_version
 from rich import print
 
 
@@ -40,42 +39,6 @@ def check_if_is_direct_url(package_name: str, url: Optional[str]) -> bool:
         return False
 
     return True
-
-
-def get_pypi_names_and_version(files: list[str]) -> dict[str, str]:
-    """
-    Return a dictionary of normalized names to it's version
-    """
-    package_names: dict[str, str] = {}
-    for file_name in files:
-        match = dist_pattern_compiled.search(file_name) or egg_pattern_compiled.search(
-            file_name
-        )
-        if match:
-            package_name = match.group(1)
-            if not package_name:
-                continue
-
-            version = match.group(2)
-            if "-py" in version:
-                index_of_py = version.index("-py")
-                version = version[:index_of_py]
-
-            pkg_version = None
-
-            try:
-                pkg_version = parse(version)
-            except Exception:
-                if "-" in version:
-                    index_of_dash = version.rfind("-")
-                    version = version[:index_of_dash]
-
-            if pkg_version:
-                version = str(pkg_version)
-
-            package_names[normalize(package_name)] = version
-
-    return package_names
 
 
 def main(
