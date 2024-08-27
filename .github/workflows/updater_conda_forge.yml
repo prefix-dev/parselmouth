@@ -37,7 +37,7 @@ jobs:
           run: |
             # Run your script here to produce a list of missing subdirs and letters
             # example: linux-64@p linux-64@d
-            message=$(pixi run parselmouth updater-producer --channel conda-forge)
+            message=$(pixi run parselmouth updater-producer --channel conda-forge --subdir noarch --no-check-if-exists)
             echo $message
             echo "string_list=$message" >> $GITHUB_OUTPUT
           env:

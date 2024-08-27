@@ -31,13 +31,17 @@ def updater_producer(
     output_dir: str = "output_index",
     check_if_exists: bool = True,
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+    subdir: str | None = None,
 ):
     """
     Generate the subdir@letter list.
     """
 
     updater_producer_main(
-        output_dir=output_dir, check_if_exists=check_if_exists, channel=channel
+        output_dir=output_dir,
+        check_if_exists=check_if_exists,
+        channel=channel,
+        subdir=subdir,
     )
 
 

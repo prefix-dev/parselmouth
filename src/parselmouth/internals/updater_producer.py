@@ -18,8 +18,19 @@ dist_pattern_compiled = re.compile(dist_info_pattern)
 egg_pattern_compiled = re.compile(egg_info_pattern)
 
 
-def main(output_dir: str, check_if_exists: bool, channel: SupportedChannels):
+def main(
+    output_dir: str,
+    check_if_exists: bool,
+    channel: SupportedChannels,
+    subdir: str | None = None,
+):
     subdirs = get_all_archs_available(channel)
+
+    # filter out the subdir we want to update
+    if subdir and subdir in subdirs:
+        subdirs = [subdir]
+    elif subdir and subdir not in subdirs:
+        raise ValueError(f"Subdir {subdir} not found in channel {channel}")
 
     all_packages: list[tuple[str, str]] = []
 
