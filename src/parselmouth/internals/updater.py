@@ -64,7 +64,7 @@ def get_pypi_names_and_version(files: list[str]) -> dict[str, str]:
         # that our regex will catch:
         # site-packages/setuptools/_vendor/zipp-3.19.2.dist-info/RECORD
         # but in reality we don't want to include itages:
-        if "_vendor" in file_path.parts:
+        if "_vendor" in file_path.parts or "_vendored" in file_path.parts:
             continue
         match = dist_pattern_compiled.search(file_name) or egg_pattern_compiled.search(
             file_name
