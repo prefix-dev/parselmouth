@@ -8,6 +8,7 @@ from parselmouth.internals.check_one import main as check_one_main
 from parselmouth.internals.updater_merger import main as update_merger_main
 from parselmouth.internals.legacy_mapping import main as legacy_mapping_main
 from parselmouth.internals.mapping_transformer import main as mapping_transformer_main
+from parselmouth.internals.remover import main as remover_main
 
 from parselmouth.internals.channels import SupportedChannels
 
@@ -138,4 +139,28 @@ def check_one(
 
     check_one_main(
         package_name=package_name, subdir=subdir, backend_type=backend, upload=upload
+    )
+
+
+@app.command()
+def remover(
+    subdir: Annotated[
+        str,
+        typer.Argument(help="Subdir for the package name"),
+    ],
+    channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+    dry_run: Annotated[
+        bool,
+        typer.Option(help="Upload or overwrite already existing mapping."),
+    ] = True,
+):
+    """
+    Check mapping just for one package.
+    You can also upload it to S3.
+    """
+
+    remover_main(
+        subdir=subdir,
+        channel=channel,
+        dry_run=dry_run,
     )
