@@ -68,4 +68,3 @@ def main(
     json_letters = json.dumps(list(letters))
 
     print(json_letters)
-    print(all_packages)
