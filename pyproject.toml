@@ -34,6 +34,7 @@ platforms = ["osx-arm64", "linux-64", "win-64"]
 
 [tool.pixi.pypi-dependencies]
 parselmouth = { path = ".", editable = true }
+types-aioboto3 = "*"
 
 [tool.pixi.dependencies]
 requests = ">=2.31.0,<2.32"

@@ -38,6 +38,10 @@ jobs:
             # Run your script here to produce a list of missing subdirs and letters
             # example: linux-64@p linux-64@d
             message=$(pixi run parselmouth updater-producer --channel pytorch)
+            if [ "$message" = "[]" ]; then
+              echo "Skipping job as no new packages found"
+              exit 0
+            fi
             echo $message
             echo "string_list=$message" >> $GITHUB_OUTPUT
           env:

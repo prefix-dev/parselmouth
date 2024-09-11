@@ -1,13 +1,13 @@
 import re
 from typing import Optional
 import logging
+from parselmouth.internals.artifact import extract_artifact_mapping
 from parselmouth.internals.channels import SupportedChannels
 from parselmouth.internals.conda_forge import (
     get_all_packages_by_subdir,
     get_artifact_info,
 )
 from parselmouth.internals.s3 import MappingEntry, s3_client
-from parselmouth.internals.updater import get_pypi_names_and_version
 from rich import print
 
 
@@ -71,43 +71,11 @@ def main(
             subdir=subdir, artifact=package_name, backend=backend_type, channel=channel
         )
         if artifact:
-            pypi_names_and_versions = get_pypi_names_and_version(artifact["files"])
-            pypi_normalized_names = (
-                [name for name in pypi_names_and_versions]
-                if pypi_names_and_versions
-                else None
-            )
-            source: Optional[dict] = artifact["rendered_recipe"].get("source", None)
-            is_direct_url: Optional[bool] = None
-
-            if source and isinstance(source, list):
-                source = artifact["rendered_recipe"]["source"][0]
-                is_direct_url = check_if_is_direct_url(
-                    package_name,
-                    source.get("url"),
-                )
-
             sha = repodatas[package_name]["sha256"]
-            conda_name = artifact["name"]
-
-            if not is_direct_url or not source:
-                direct_url = None
-            else:
-                url = source.get("url", None)
-                direct_url = [url] if isinstance(url, str) else url
 
             if sha not in names_mapping:
-                names_mapping[sha] = MappingEntry.model_validate(
-                    {
-                        "pypi_normalized_names": pypi_normalized_names,
-                        "versions": pypi_names_and_versions
-                        if pypi_names_and_versions
-                        else None,
-                        "conda_name": conda_name,
-                        "package_name": package_name,
-                        "direct_url": direct_url,
-                    }
-                )
+                mapping_entry = extract_artifact_mapping(artifact, package_name)
+                names_mapping[sha] = mapping_entry
             break
 
     if not names_mapping:
@@ -116,6 +84,17 @@ def main(
     print(names_mapping)
 
     if upload:
+        # getting the index mapping
+        existing_mapping_data = s3_client.get_channel_index(channel=channel)
+        if not existing_mapping_data:
+            raise ValueError(f"Could not get the index mapping for channel {channel}")
+
+        # updating with the new mapping
+        existing_mapping_data.root.update(names_mapping)
+
+        logging.warning("Uploading index to S3")
+        s3_client.upload_index(existing_mapping_data, channel=channel)
+
         logging.warning("Uploading mapping to S3")
         for sha_name, mapping_body in names_mapping.items():
             s3_client.upload_mapping(mapping_body, sha_name)
