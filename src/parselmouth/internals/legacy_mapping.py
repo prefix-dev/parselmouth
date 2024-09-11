@@ -1,4 +1,5 @@
 import json
+from typing import Mapping
 from deprecated import deprecated
 
 from pydantic import BaseModel
@@ -15,7 +16,7 @@ class CompressedMapping(BaseModel):
 
 
 def format_and_save_mapping(
-    mapping: dict[str, SmallMapping] | dict[str, CompressedMapping],
+    mapping: Mapping[str, SmallMapping | CompressedMapping],
     mapping_name: str = "mapping_as_grayskull",
 ):
     # now le'ts iterate over created small_mapping
