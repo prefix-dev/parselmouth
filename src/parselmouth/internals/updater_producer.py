@@ -39,6 +39,7 @@ def main(
         if not existing_mapping_data:
             existing_mapping_data = IndexMapping(root={})
     else:
+        # a new channel may not have any mapping data. so we need to create an empty one
         existing_mapping_data = IndexMapping(root={})
 
     letters = set()
@@ -67,3 +68,4 @@ def main(
     json_letters = json.dumps(list(letters))
 
     print(json_letters)
+    print(all_packages)
