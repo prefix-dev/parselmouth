@@ -215,6 +215,13 @@ def main(
     if not dry_run:
         logging.warning("Starting to removing hashes from S3")
         asyncio.run(remove_from_s3(hash_to_remove))
+
+        # now remove from index file
+        for sha in hash_to_remove:
+            existing_mapping_data.root.pop(sha, None)
+            total += 1
+
+        s3_client.upload_index(existing_mapping_data, channel=channel)
     else:
         logging.warning(
             "Running in dry-run mode. This means that we do not actually remove"

@@ -143,7 +143,7 @@ def check_one(
 
 
 @app.command()
-def remover(
+def remove(
     subdir: Annotated[
         str,
         typer.Argument(help="Subdir for the package name"),
@@ -151,12 +151,11 @@ def remover(
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
     dry_run: Annotated[
         bool,
-        typer.Option(help="Upload or overwrite already existing mapping."),
+        typer.Option(help="Upload results of removal."),
     ] = True,
 ):
     """
-    Check mapping just for one package.
-    You can also upload it to S3.
+    Yank and remove packages from the index and by it's hash.
     """
 
     remover_main(
