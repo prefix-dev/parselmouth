@@ -1,8 +1,6 @@
 import asyncio
 import io
-import json
 import os
-from pathlib import Path
 from typing import Optional
 import aioboto3.session
 import botocore.client
@@ -10,8 +8,6 @@ from conda_forge_metadata.types import ArtifactData
 import concurrent.futures
 import logging
 from dotenv import load_dotenv
-
-from parselmouth.internals.artifact import extract_artifact_mapping
 from parselmouth.internals.channels import BackendRequestType, SupportedChannels
 from parselmouth.internals.conda_forge import (
     get_all_packages_by_subdir,
@@ -22,6 +18,8 @@ from parselmouth.internals.s3 import IndexMapping
 import aioboto3
 
 from parselmouth.internals.yank import YankConfig
+
+from parselmouth.internals.s3 import s3_client
 
 
 names_mapping: IndexMapping = IndexMapping.model_construct(root={})
@@ -41,7 +39,7 @@ async def async_upload_package(
         logging.error(f"could not upload it {package_hash} {e}")
 
 
-async def upload_to_s3(names_mapping: IndexMapping):
+async def remove_from_s3(sha_to_remove: list[str]):
     total = 0
     load_dotenv()
     account_id = os.getenv("R2_PREFIX_ACCOUNT_ID", "default")
@@ -66,72 +64,46 @@ async def upload_to_s3(names_mapping: IndexMapping):
     ) as s3_client:
         tasks = [
             asyncio.ensure_future(
-                async_upload_package(
-                    s3_client, pkg_body.model_dump_json(), package_hash, bucket_name
-                )
+                s3_client.delete_object(Bucket=bucket_name, Key=f"hash-v0/{sha}")
             )
-            for package_hash, pkg_body in names_mapping.root.items()
+            for sha in sha_to_remove
         ]
 
         for task in asyncio.as_completed(tasks):
             await task
             total += 1
-            if total % 1000 == 0:
-                logging.warning(
-                    f"Done {total} dumping to S3 from {len(names_mapping.root)}"
-                )
+
+        logging.warning(f"Done {total} removing to S3 from {len(sha_to_remove)}")
 
 
 def main(
-    subdir_letter: str,
-    output_dir: str = "output_index",
-    partial_output_dir: str = "output",
+    subdir: str,
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
-    upload: bool = False,
+    dry_run: bool = True,
 ):
     yank_config = YankConfig.load_config()
 
-    subdir, letter = subdir_letter.split("@")
-
     all_packages: list[tuple[str, str]] = []
 
-    index_location = Path(output_dir) / channel / "index.json"
-    existing_mapping_data = IndexMapping.model_validate_json(index_location.read_text())
+    existing_mapping_data = s3_client.get_channel_index(channel=channel)
+
+    assert existing_mapping_data
 
     repodatas = get_all_packages_by_subdir(subdir, channel)
-    total_packages = set()
 
     for idx, package_name in enumerate(repodatas):
-        if not package_name.startswith(letter):
-            continue
-
         package = repodatas[package_name]
         sha256 = package["sha256"]
 
-        if sha256 not in existing_mapping_data.root:
+        if sha256 in existing_mapping_data.root and any(
+            name in package_name for name in yank_config.names
+        ):
             # trying to get packages info using all backends.
             # note: streamed is not supported for .tar.gz
-            if package_name.endswith(".conda"):
-                all_packages.append((package_name, BackendRequestType.STREAMED))
-                total_packages.add(package_name)
-            elif (
-                package_name.endswith(".tar.bz2")
-                and channel == SupportedChannels.CONDA_FORGE
-            ):
-                all_packages.append((package_name, BackendRequestType.OCI))
-                total_packages.add(package_name)
-            elif (
-                package_name.endswith(".tar.bz2")
-                and channel == SupportedChannels.PYTORCH
-            ):
-                all_packages.append((package_name, BackendRequestType.STREAMED))
-                total_packages.add(package_name)
-            else:
-                logging.warning(
-                    f"Skipping {package_name} as it is not a .conda or .tar.bz2"
-                )
+            all_packages.append((package_name, BackendRequestType.STREAMED))
 
     total = 0
+    hash_to_remove = []
     logging.warning(f"Total packages for processing: {len(all_packages)} for {subdir}")
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = {
@@ -149,50 +121,38 @@ def main(
             total += 1
             if total % 1000 == 0:
                 logging.warning(f"Done {total} from {len(all_packages)}")
-            package_name, backend_type = futures[done]
+            package_name, _ = futures[done]
             try:
                 artifact: Optional[ArtifactData] = done.result()
                 if artifact:
                     should_yank = yank_config.should_yank(artifact, subdir, channel)
+                    sha = repodatas[package_name]["sha256"]
                     if should_yank:
                         logging.info(
-                            f"Skipping {package_name} from {subdir} {channel} as it should be yanked"
+                            f"Adding {package_name} from {subdir} {channel} to remove list"
                         )
-                        continue
-                    sha = repodatas[package_name]["sha256"]
-                    mapping_entry = extract_artifact_mapping(artifact, package_name)
-
-                    names_mapping.root[sha] = mapping_entry
-                else:
-                    logging.warning(
-                        f"Could not get artifact for {package_name} using backend: {backend_type}"
-                    )
+                        hash_to_remove.append(sha)
 
             except Exception as e:
                 logging.error(f"An error occurred: {e} for package {package_name}")
 
     total = 0
 
-    if upload:
-        logging.warning(f"Starting to dump to S3 for {subdir}")
-        # using async approach over multithread is much more faster
-        # same should be done for extracting the metadata
-        asyncio.run(upload_to_s3(names_mapping))
+    if not dry_run:
+        logging.warning("Starting to removing hashes from S3")
+        asyncio.run(remove_from_s3(hash_to_remove))
+
+        # now remove from index file
+        for sha in hash_to_remove:
+            existing_mapping_data.root.pop(sha, None)
+            total += 1
+
+        s3_client.upload_index(existing_mapping_data, channel=channel)
     else:
-        logging.warning(f"Uploading is disabled for {subdir}. Skipping it.")
+        logging.warning(
+            "Running in dry-run mode. This means that we do not actually remove"
+        )
 
     logging.warning(
-        f"Processed {len(names_mapping.root)} packages out of {len(total_packages)}"
+        f"Based on yank configuration we should remove : {len(hash_to_remove)}"
     )
-
-    partial_json_name = f"{subdir}@{letter}.json"
-
-    logging.warning("Producing partial index.json")
-
-    partial_output_dir_location = Path(partial_output_dir) / channel
-    os.makedirs(partial_output_dir_location, exist_ok=True)
-
-    with open(
-        partial_output_dir_location / partial_json_name, mode="w"
-    ) as mapping_file:
-        json.dump(names_mapping.model_dump(), mapping_file)

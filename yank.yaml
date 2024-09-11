@@ -1,0 +1,6 @@
+packages:
+  - name: pyqt
+    platforms:
+      - osx-arm64
+    channels:
+      - conda-forge
