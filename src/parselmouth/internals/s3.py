@@ -1,19 +1,29 @@
 import io
+import json
 import logging
 import os
-from typing import Optional
+from typing import Any, Optional
 from dotenv import load_dotenv
 import boto3
+import boto3.exceptions
 from botocore.config import Config
 
 
 from pydantic import BaseModel, RootModel
 
 from parselmouth.internals.channels import SupportedChannels
+from parselmouth.internals.schema import SchemaJsonEncoder
 
 CURRENT_VERSION = "v0"
 
 INDEX_FILE = "index.json"
+
+
+PYPI_TO_CONDA = "pypi-to-conda"
+PYPI_TO_CONDA_INDEX = "index"
+
+SCHEMA = "schema"
+SCHEMA_FILE = "schema.json"
 
 
 class MappingEntry(BaseModel):
@@ -75,6 +85,52 @@ class S3:
 
         self._s3_client.upload_fileobj(
             output_as_file, self.bucket_name, f"hash-{CURRENT_VERSION}/{file_name}"
+        )
+
+    def upload_pypi_mapping(
+        self,
+        entry: dict[str, list[str]],
+        file_name: str,
+        channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+    ):
+        # Check if the file already exists in S3
+        file_name = f"{PYPI_TO_CONDA}-{CURRENT_VERSION}/{channel}/{file_name}.json"
+
+        output = json.dumps(entry)
+        output_as_file = io.BytesIO(output.encode("utf-8"))
+
+        self._s3_client.upload_fileobj(
+            output_as_file,
+            self.bucket_name,
+            f"{PYPI_TO_CONDA}-{CURRENT_VERSION}/{channel}/{file_name}.json",
+        )
+
+    def upload_pypi_mapping_index(
+        self,
+        entry: dict[str, dict[str, list[str]]],
+        channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+    ):
+        output = json.dumps(entry)
+        output_as_file = io.BytesIO(output.encode("utf-8"))
+
+        self._s3_client.upload_fileobj(
+            output_as_file,
+            self.bucket_name,
+            f"{PYPI_TO_CONDA}-{CURRENT_VERSION}/{channel}/{PYPI_TO_CONDA_INDEX}/{INDEX_FILE}",
+        )
+
+    def upload_pypi_mapping_schema(
+        self,
+        entry: dict[str, Any],
+        channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+    ):
+        output = json.dumps(entry, cls=SchemaJsonEncoder)
+        output_as_file = io.BytesIO(output.encode("utf-8"))
+
+        self._s3_client.upload_fileobj(
+            output_as_file,
+            self.bucket_name,
+            f"{PYPI_TO_CONDA}-{CURRENT_VERSION}/{channel}/{SCHEMA}/{SCHEMA_FILE}",
         )
 
     def upload_index(self, entry: IndexMapping, channel: SupportedChannels):
