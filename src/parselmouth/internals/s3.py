@@ -93,7 +93,6 @@ class S3:
         file_name: str,
         channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
     ):
-        # Check if the file already exists in S3
         file_name = f"{PYPI_TO_CONDA}-{CURRENT_VERSION}/{channel}/{file_name}.json"
 
         output = json.dumps(entry)
