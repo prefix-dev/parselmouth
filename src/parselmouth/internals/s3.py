@@ -2,7 +2,7 @@ import io
 import json
 import logging
 import os
-from typing import Any, Optional
+from typing import Any, Optional, Annotated
 from dotenv import load_dotenv
 import boto3
 import boto3.exceptions
@@ -13,13 +13,23 @@ from pydantic import BaseModel, RootModel
 
 from parselmouth.internals.channels import SupportedChannels
 from parselmouth.internals.schema import SchemaJsonEncoder
+from parselmouth.internals.types import (
+    PyPIName,
+    PyPISourceUrl,
+    PyPIVersion,
+    CondaFileName,
+    CondaPackageName,
+)
+from parselmouth.internals.pypi_mapping import PyPIToCondaMapping
 
 CURRENT_VERSION = "v0"
 
+# Name of the main index file
 INDEX_FILE = "index.json"
 
-
+# Name of the url that contains the mapping between PyPI and Conda
 PYPI_TO_CONDA = "pypi-to-conda"
+# Name of the index file for the PyPI to Conda mapping
 PYPI_TO_CONDA_INDEX = "index"
 
 SCHEMA = "schema"
@@ -27,18 +37,42 @@ SCHEMA_FILE = "schema.json"
 
 
 class MappingEntry(BaseModel):
-    pypi_normalized_names: list[str] | None = None
-    versions: dict[str, str] | None = None
-    conda_name: str
-    package_name: str
-    direct_url: list[str] | None = None
+    """
+    Mapping entry that corresponds to a single conda file hash:
+    conda_hash -> MappingEntry
+    """
+
+    # List of normalized names
+    pypi_normalized_names: list[PyPIName] | None = None
+    # List of versions, there will normally be a unique version for each name
+    versions: dict[PyPIName, PyPIVersion] | None = None
+    # Name of the package on conda
+    conda_name: CondaPackageName
+    # Name of the file on conda
+    # todo: we should change this to FileName
+    package_name: CondaFileName
+    # List of direct urls to the package
+    # these are used when the package is not on a PyPI index
+    direct_url: list[PyPISourceUrl] | None = None
+
+
+type CondaFileHash = Annotated[str, "Sha256 of the conda package"]
 
 
 class IndexMapping(RootModel):
-    root: dict[str, MappingEntry]
+    """
+    The index mapping is a mapping of hashes to `MappingEntry`
+    """
+
+    root: dict[CondaFileName, MappingEntry]
 
 
 class S3:
+    """
+    This class is responsible for uploading and downloading files from S3.
+    It's used to upload the index mapping and the mapping between PyPI and Conda and vice versa.
+    """
+
     def __init__(self) -> None:
         loaded = load_dotenv()
         if not loaded:
@@ -68,6 +102,9 @@ class S3:
         self._s3_client = s3_client
 
     def get_channel_index(self, channel: SupportedChannels) -> Optional[IndexMapping]:
+        """
+        Get the full index mapping for a channel, so this will contain all the hashes and their mapping entries.
+        """
         assert self._s3_client
         index_obj_key = f"hash-{CURRENT_VERSION}/{channel}/{INDEX_FILE}"
         try:
@@ -80,6 +117,9 @@ class S3:
         return IndexMapping.model_validate_json(response["Body"].read().decode("utf-8"))
 
     def upload_mapping(self, entry: MappingEntry, file_name: str):
+        """
+        Upload a single mapping entry to S3.
+        """
         output = entry.model_dump_json()
         output_as_file = io.BytesIO(output.encode("utf-8"))
 
@@ -89,10 +129,13 @@ class S3:
 
     def upload_pypi_mapping(
         self,
-        entry: dict[str, list[str]],
-        file_name: str,
+        entry: PyPIToCondaMapping,
+        file_name: PyPIName,
         channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
     ):
+        """
+        Upload PyPI to conda name mapping
+        """
         file_name = f"{PYPI_TO_CONDA}-{CURRENT_VERSION}/{channel}/{file_name}.json"
 
         output = json.dumps(entry)

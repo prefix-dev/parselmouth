@@ -21,6 +21,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from typing import Annotated, Any, List, Optional
 from tqdm import tqdm
+from parselmouth.internals.types import PyPIName, PyPIVersion, CondaPackageName
 
 from pydantic import Field, RootModel, StringConstraints
 from parselmouth.internals.channels import SupportedChannels
@@ -28,6 +29,8 @@ from parselmouth.internals.s3 import IndexMapping, MappingEntry, s3_client
 
 NonEmptyStr = Annotated[str, StringConstraints(min_length=1)]
 VersionStr = NonEmptyStr
+PyPIToCondaMappingUnique = dict[PyPIName, dict[PyPIVersion, set[CondaPackageName]]]
+PyPIToCondaMapping = dict[PyPIName, dict[PyPIVersion, list[CondaPackageName]]]
 
 
 class PyPiEntry(RootModel):
@@ -44,11 +47,11 @@ class PyPiToConda(RootModel):
 
 def process_index_entry(
     entry: MappingEntry,
-) -> Optional[dict[str, dict[str, set[str]]]]:
+) -> Optional[PyPIToCondaMappingUnique]:
     """
     return a tuple of pypi_names to conda_names
     """
-    records: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
+    records: PyPIToCondaMappingUnique = defaultdict(lambda: defaultdict(set))
 
     if not entry.pypi_normalized_names:
         return None
@@ -62,7 +65,11 @@ def process_index_entry(
     return records
 
 
-def name_to_name(index: IndexMapping) -> dict[str, dict[str, set[str]]]:
+def convert_mapping_to_inverse(index: IndexMapping) -> PyPIToCondaMappingUnique:
+    """
+    Create a mapping from the Conda -> PyPI mapping, but in reverse
+    esentially creating the PyPI -> Conda mapping
+    """
     # default dict
     pypi_name_to_conda_name: dict[str, dict[str, set[str]]] = defaultdict(
         lambda: defaultdict(set[str])
@@ -95,12 +102,12 @@ def main(channel: SupportedChannels):
     if not existing_mapping_data:
         raise ValueError(f"Channel {channel} does not exist or is empty")
 
-    name_to_name_mapping = name_to_name(existing_mapping_data)
+    pypi_name_to_conda_name_unique = convert_mapping_to_inverse(existing_mapping_data)
 
     # convert inside set to list
-    name_to_name_mapping = {
+    pypi_name_to_conda_name: PyPIToCondaMapping = {
         k: {kk: list(vv) for kk, vv in v.items()}
-        for k, v in name_to_name_mapping.items()
+        for k, v in pypi_name_to_conda_name_unique.items()
     }
 
     # upload mapping to s3
@@ -111,7 +118,7 @@ def main(channel: SupportedChannels):
                 s3_client.upload_pypi_mapping, pypi_version_to_conda, pypi_name
             )
             for pypi_name, pypi_version_to_conda in tqdm(
-                name_to_name_mapping.items(), desc="Uploading files"
+                pypi_name_to_conda_name.items(), desc="Uploading files"
             )
         ]
 
@@ -120,13 +127,13 @@ def main(channel: SupportedChannels):
             future.result()  # This will raise an exception if the upload fails
 
     # upload mapping index to s3
-    s3_client.upload_pypi_mapping_index(name_to_name_mapping)
+    s3_client.upload_pypi_mapping_index(pypi_name_to_conda_name)
 
     mapping_schema = generate_pypi_to_conda_schema()
 
     s3_client.upload_pypi_mapping_schema(mapping_schema)
 
-    return name_to_name_mapping
+    return pypi_name_to_conda_name
 
 
 if __name__ == "__main__":
