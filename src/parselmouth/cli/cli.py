@@ -8,6 +8,7 @@ from parselmouth.internals.check_one import main as check_one_main
 from parselmouth.internals.updater_merger import main as update_merger_main
 from parselmouth.internals.legacy_mapping import main as legacy_mapping_main
 from parselmouth.internals.mapping_transformer import main as mapping_transformer_main
+from parselmouth.internals.pypi_mapping import main as pypi_mapping_main
 from parselmouth.internals.remover import main as remover_main
 
 from parselmouth.internals.channels import SupportedChannels
@@ -106,6 +107,17 @@ def update_mapping(channel: SupportedChannels = SupportedChannels.CONDA_FORGE):
     """
 
     mapping_transformer_main(channel=channel)
+
+
+@app.command()
+def update_pypi_to_conda_mapping(
+    channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+):
+    """
+    This is used to update compressed files in the repository.
+    """
+
+    pypi_mapping_main(channel=channel)
 
 
 @app.command()
