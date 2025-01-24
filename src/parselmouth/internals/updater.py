@@ -114,18 +114,18 @@ def main(
             if package_name.endswith(".conda"):
                 all_packages.append((package_name, BackendRequestType.STREAMED))
                 total_packages.add(package_name)
-            elif (
-                package_name.endswith(".tar.bz2")
-                and channel == SupportedChannels.CONDA_FORGE
-            ):
-                all_packages.append((package_name, BackendRequestType.OCI))
-                total_packages.add(package_name)
-            elif (
-                package_name.endswith(".tar.bz2")
-                and channel == SupportedChannels.PYTORCH
-            ):
-                all_packages.append((package_name, BackendRequestType.STREAMED))
-                total_packages.add(package_name)
+            # elif (
+            #     package_name.endswith(".tar.bz2")
+            #     and channel == SupportedChannels.CONDA_FORGE
+            # ):
+            #     all_packages.append((package_name, BackendRequestType.OCI))
+            #     total_packages.add(package_name)
+            # elif (
+            #     package_name.endswith(".tar.bz2")
+            #     and channel == SupportedChannels.PYTORCH
+            # ):
+            #     all_packages.append((package_name, BackendRequestType.STREAMED))
+            #     total_packages.add(package_name)
             else:
                 logging.warning(
                     f"Skipping {package_name} as it is not a .conda or .tar.bz2"
