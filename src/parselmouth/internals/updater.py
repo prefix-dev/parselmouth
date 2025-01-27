@@ -114,18 +114,18 @@ def main(
             if package_name.endswith(".conda"):
                 all_packages.append((package_name, BackendRequestType.STREAMED))
                 total_packages.add(package_name)
-            elif (
-                package_name.endswith(".tar.bz2")
-                and channel == SupportedChannels.CONDA_FORGE
-            ):
-                all_packages.append((package_name, BackendRequestType.OCI))
-                total_packages.add(package_name)
-            elif (
-                package_name.endswith(".tar.bz2")
-                and channel == SupportedChannels.PYTORCH
-            ):
-                all_packages.append((package_name, BackendRequestType.STREAMED))
-                total_packages.add(package_name)
+            # elif (
+            #     package_name.endswith(".tar.bz2")
+            #     and channel == SupportedChannels.CONDA_FORGE
+            # ):
+            #     all_packages.append((package_name, BackendRequestType.OCI))
+            #     total_packages.add(package_name)
+            # elif (
+            #     package_name.endswith(".tar.bz2")
+            #     and channel == SupportedChannels.PYTORCH
+            # ):
+            #     all_packages.append((package_name, BackendRequestType.STREAMED))
+            #     total_packages.add(package_name)
             else:
                 logging.warning(
                     f"Skipping {package_name} as it is not a .conda or .tar.bz2"
@@ -161,6 +161,14 @@ def main(
                         continue
                     sha = repodatas[package_name]["sha256"]
                     mapping_entry = extract_artifact_mapping(artifact, package_name)
+
+                    # TODO: re-index only if the package is dont have the normalized_names
+                    normalized_names = mapping_entry.pypi_normalized_names
+                    if not normalized_names:
+                        logging.warning(
+                            f"Skipping {package_name} from {subdir} {channel} as it does not have normalized names"
+                        )
+                        continue
 
                     names_mapping.root[sha] = mapping_entry
                 else:
