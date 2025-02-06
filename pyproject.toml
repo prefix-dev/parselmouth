@@ -78,8 +78,6 @@ mypy = ">=1.10.1, <2"
 [tool.pixi.feature.type-checking.tasks]
 type-check = "mypy src"
 
-
-
 [tool.pixi.environments]
 test = {features = ["test"], solve-group = "default"}
 fmt = {features = ["fmt"], solve-group = "default"}

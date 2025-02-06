@@ -2548,7 +2548,7 @@ packages:
 - pypi: .
   name: parselmouth
   version: 0.0.1
-  sha256: ea253200e838de95a557786f9ec9a49895e2e603216316815c57bc00740fa749
+  sha256: e6c96a9e7de5e24dcd33a26e374b5e851e76c00392dc81aef4fc683417fc3066
   requires_dist:
   - conda-oci-mirror @ git+https://github.com/channel-mirrors/conda-oci-mirror.git@25ea3e436f0b0bc5a9c646121efafc9c68e116cd
   - conda-forge-metadata~=0.8.1
