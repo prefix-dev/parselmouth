@@ -110,7 +110,6 @@ def main(
 
         if sha256 not in existing_mapping_data.root:
             # trying to get packages info using all backends.
-            # note: streamed is not supported for .tar.gz
             if package_name.endswith(".conda"):
                 all_packages.append((package_name, BackendRequestType.STREAMED))
                 total_packages.add(package_name)
