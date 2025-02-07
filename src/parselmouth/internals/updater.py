@@ -110,19 +110,14 @@ def main(
 
         if sha256 not in existing_mapping_data.root:
             # trying to get packages info using all backends.
-            if package_name.endswith(".conda"):
-                all_packages.append((package_name, BackendRequestType.STREAMED))
-                total_packages.add(package_name)
-            elif (
-                package_name.endswith(".tar.bz2")
-                and channel == SupportedChannels.CONDA_FORGE
-            ):
+            if package_name.endswith(".tar.bz2") and channel == SupportedChannels.CONDA_FORGE:
+                # Use OCI for conda-forge tar.bz2 as it is faster
                 all_packages.append((package_name, BackendRequestType.OCI))
                 total_packages.add(package_name)
             elif (
-                package_name.endswith(".tar.bz2")
-                and channel == SupportedChannels.PYTORCH
+                package_name.endswith(".tar.bz2") or package_name.endswith(".conda")
             ):
+                # Use streamed for other channels
                 all_packages.append((package_name, BackendRequestType.STREAMED))
                 total_packages.add(package_name)
             else:

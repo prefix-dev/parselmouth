@@ -51,7 +51,7 @@ ruamel = ">=1.0,<2"
 pytest = "*"
 
 [tool.pixi.feature.test.tasks]
-run-tests = "pytest tests"
+test = "pytest tests"
 
 [tool.pixi.feature.fmt.dependencies]
 # Formatting python
