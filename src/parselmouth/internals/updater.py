@@ -157,13 +157,7 @@ def main(
                     sha = repodatas[package_name]["sha256"]
                     mapping_entry = extract_artifact_mapping(artifact, package_name)
 
-                    # TODO: re-index only if the package is dont have the normalized_names
-                    normalized_names = mapping_entry.pypi_normalized_names
-                    if not normalized_names:
-                        logging.warning(
-                            f"Skipping {package_name} from {subdir} {channel} as it does not have normalized names"
-                        )
-                        continue
+                    # TODO: add an option to re-index only if the package don't have the normalized_names
 
                     names_mapping.root[sha] = mapping_entry
                 else:
