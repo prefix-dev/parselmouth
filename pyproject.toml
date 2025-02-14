@@ -51,7 +51,7 @@ ruamel = ">=1.0,<2"
 pytest = "*"
 
 [tool.pixi.feature.test.tasks]
-run-tests = "pytest tests"
+test = "pytest tests"
 
 [tool.pixi.feature.fmt.dependencies]
 # Formatting python
@@ -68,6 +68,7 @@ check-fmt = "ruff check --fix"
 
 pre-commit-install = "pre-commit-install"
 pre-commit-run = "pre-commit run"
+lint = "pre-commit run -a"
 
 [tool.pixi.feature.type-checking.dependencies]
 types-pyyaml = ">=6.0.12.20240311, <6.0.13"
@@ -77,8 +78,6 @@ mypy = ">=1.10.1, <2"
 
 [tool.pixi.feature.type-checking.tasks]
 type-check = "mypy src"
-
-
 
 [tool.pixi.environments]
 test = {features = ["test"], solve-group = "default"}
