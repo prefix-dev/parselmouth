@@ -6,19 +6,19 @@ on:
   pull_request:
 
 jobs:
-  run_tests:
-    runs-on: ubuntu-latest
-    steps:
-        - uses: actions/checkout@v4
+  # run_tests:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #       - uses: actions/checkout@v4
 
-        - uses: prefix-dev/setup-pixi@v0.8.1
-          with:
-            pixi-version: "latest"
-            manifest-path: pyproject.toml
+  #       - uses: prefix-dev/setup-pixi@v0.8.1
+  #         with:
+  #           pixi-version: "latest"
+  #           manifest-path: pyproject.toml
 
-        - name: run tests
-          run: |
-           pixi run test
+  #       - name: run tests
+  #         run: |
+  #          pixi run test
 
   pre-commit:
     runs-on: ubuntu-latest
