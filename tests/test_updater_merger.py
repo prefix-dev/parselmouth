@@ -18,13 +18,42 @@ def test_updater_merger_collects_all_packages_from_folder(tmp_path, capsys):
     os.makedirs(tmp_dir / "conda-forge")
 
     # make two files
-    tmp_foo: Path = tmp_dir / "conda-forge" / "linux64@a.json"
+    tmp_foo: Path = tmp_dir / "conda-forge" / "linux64@f.json"
     tmp_foo.touch()
-    tmp_foo.write_text(json.dumps({"foo": {"name": "foo"}}))
+    # pypi_normalized_names: list[str] | None = None
+    # versions: dict[str, str] | None = None
+    # conda_name: str
+    # package_name: str
+    # direct_url: list[str] | None = None
+    tmp_foo.write_text(
+        json.dumps(
+            {
+                "foo": {
+                    "pypi_normalized_names": ["foo"],
+                    "versions": {"foo": "1.0.0"},
+                    "conda_name": "foo",
+                    "package_name": "foo",
+                    "direct_url": ["https://foo.com"],
+                }
+            }
+        )
+    )
 
     tmp_bar: Path = tmp_dir / "conda-forge" / "linux64@b"
     tmp_bar.touch()
-    tmp_bar.write_text(json.dumps({"bar": {"name": "bar"}}))
+    tmp_bar.write_text(
+        json.dumps(
+            {
+                "bar": {
+                    "pypi_normalized_names": ["bar"],
+                    "versions": {"bar": "1.0.0"},
+                    "conda_name": "bar",
+                    "package_name": "bar",
+                    "direct_url": ["https://bar.com"],
+                }
+            }
+        )
+    )
 
     updater_merger.main(
         output_dir=tmp_dir, channel=SupportedChannels.CONDA_FORGE, upload=True
