@@ -11,8 +11,6 @@ from parselmouth.internals.channels import SupportedChannels
 def test_updater(mocked_upload_to_s3, capsys, tmp_path):
     test_s3_client = MockS3()
 
-    # updater.s3_client = test_s3_client
-
     updater.get_all_packages_by_subdir = mocked_get_all_packages_by_subdir
 
     tmp_output_dir = tmp_path / "tmp_output_dir"

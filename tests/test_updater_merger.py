@@ -20,11 +20,6 @@ def test_updater_merger_collects_all_packages_from_folder(tmp_path, capsys):
     # make two files
     tmp_foo: Path = tmp_dir / "conda-forge" / "linux64@f.json"
     tmp_foo.touch()
-    # pypi_normalized_names: list[str] | None = None
-    # versions: dict[str, str] | None = None
-    # conda_name: str
-    # package_name: str
-    # direct_url: list[str] | None = None
     tmp_foo.write_text(
         json.dumps(
             {

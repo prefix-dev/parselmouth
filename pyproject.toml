@@ -49,7 +49,6 @@ ruamel = ">=1.0,<2"
 
 [tool.pixi.feature.test.dependencies]
 pytest = "*"
-# pytest-mock = "*"
 
 [tool.pixi.feature.test.tasks]
 test = "pytest tests"
