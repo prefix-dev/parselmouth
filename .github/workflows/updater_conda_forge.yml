@@ -33,7 +33,7 @@ jobs:
             R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
 
         - name: Upload requested index.json
-          uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4
+          uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
           with:
             name: index
             path: output_index
@@ -51,7 +51,7 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.8.3
 
       - name: Get partial index artifacts
-        uses: actions/download-artifact@b14cf4c92620c250e1c074ab0a5800e37df86765 # v4
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4
         with:
             name: index
             path: output_index
@@ -65,7 +65,7 @@ jobs:
             R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
 
       - name: Upload partial index
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
             name: partial_index_${{ matrix.subdirs }}
             path: output
@@ -78,7 +78,7 @@ jobs:
         - uses: prefix-dev/setup-pixi@v0.8.3
 
         - name: Get partial index artifacts
-          uses: actions/download-artifact@b14cf4c92620c250e1c074ab0a5800e37df86765 # v4
+          uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4
           with:
             merge-multiple: true
             path: output
