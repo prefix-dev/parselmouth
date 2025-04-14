@@ -16,7 +16,7 @@ jobs:
         string_list: ${{ steps.generate.outputs.string_list }}
     steps:
         - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-        - uses: prefix-dev/setup-pixi@v0.8.4
+        - uses: prefix-dev/setup-pixi@v0.8.5
 
         - name: Generate combination of missing subdirs and letters
           id: generate
@@ -48,7 +48,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-      - uses: prefix-dev/setup-pixi@v0.8.4
+      - uses: prefix-dev/setup-pixi@v0.8.5
 
       - name: Get partial index artifacts
         uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4
@@ -75,7 +75,7 @@ jobs:
     needs: updater_of_records
     steps:
         - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-        - uses: prefix-dev/setup-pixi@v0.8.4
+        - uses: prefix-dev/setup-pixi@v0.8.5
 
         - name: Get partial index artifacts
           uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4
@@ -100,7 +100,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-      - uses: prefix-dev/setup-pixi@v0.8.4
+      - uses: prefix-dev/setup-pixi@v0.8.5
 
       - name: Update grayskull mapping and compressed mapping
         run: |
