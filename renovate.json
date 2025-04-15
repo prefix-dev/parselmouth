@@ -1,6 +1,17 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
+  "extends": ["config:recommended", ":maintainLockFilesMonthly"],
+  "schedule": ["on the second day of the month"],
+  "enabledManagers": ["github-actions", "pixi"],
+  "commitMessagePrefix": "chore(ci):",
+  "packageRules": [
+    {
+      "groupName": "GitHub Actions",
+      "matchManagers": ["github-actions"]
+    },
+    {
+      "groupName": "Pixi",
+      "matchManagers": ["pixi"]
+    }
   ]
 }
