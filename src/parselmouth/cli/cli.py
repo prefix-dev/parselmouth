@@ -31,6 +31,7 @@ def main():
 def updater_producer(
     output_dir: str = "output_index",
     check_if_exists: bool = True,
+    check_if_pypi_exists: bool = False,
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
     subdir: str | None = None,
 ):
@@ -41,6 +42,7 @@ def updater_producer(
     updater_producer_main(
         output_dir=output_dir,
         check_if_exists=check_if_exists,
+        check_if_pypi_exists=check_if_pypi_exists,
         channel=channel,
         subdir=subdir,
     )
