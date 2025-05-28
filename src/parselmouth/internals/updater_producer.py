@@ -21,6 +21,7 @@ egg_pattern_compiled = re.compile(egg_info_pattern)
 def main(
     output_dir: str,
     check_if_exists: bool,
+    check_if_pypi_exists: bool,
     channel: SupportedChannels,
     subdir: str | None = None,
 ):
@@ -58,6 +59,14 @@ def main(
             if sha256 not in existing_mapping_data.root:
                 all_packages.append(package_name)
                 letters.add(f"{subdir}@{package_name[0]}")
+
+            elif check_if_pypi_exists:
+                # If the package already exists, we check if it has pypi_normalized_names
+                existing_entry = existing_mapping_data.root[sha256]
+                # If it does not have pypi_normalized_names, we add it to the list
+                if existing_entry.pypi_normalized_names is None:
+                    all_packages.append(package_name)
+                    letters.add(f"{subdir}@{package_name[0]}")
 
     index_location = Path(output_dir) / channel / "index.json"
     os.makedirs(index_location.parent, exist_ok=True)
