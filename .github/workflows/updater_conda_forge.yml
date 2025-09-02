@@ -15,7 +15,7 @@ jobs:
     outputs:
         string_list: ${{ steps.generate.outputs.string_list }}
     steps:
-        - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+        - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         - uses: prefix-dev/setup-pixi@v0.9.0
 
         - name: Generate combination of missing subdirs and letters
@@ -47,11 +47,11 @@ jobs:
             subdirs: ${{fromJson(needs.generate_hash_letters.outputs.string_list)}}
 
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
       - uses: prefix-dev/setup-pixi@v0.9.0
 
       - name: Get partial index artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
             name: index
             path: output_index
@@ -74,11 +74,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: updater_of_records
     steps:
-        - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+        - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         - uses: prefix-dev/setup-pixi@v0.9.0
 
         - name: Get partial index artifacts
-          uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+          uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
           with:
             merge-multiple: true
             path: output
@@ -99,7 +99,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
       - uses: prefix-dev/setup-pixi@v0.9.0
 
       - name: Update grayskull mapping and compressed mapping
