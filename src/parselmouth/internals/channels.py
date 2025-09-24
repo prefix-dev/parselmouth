@@ -21,7 +21,9 @@ class ChannelUrls:
         SupportedChannels.CONDA_FORGE: ["https://conda.anaconda.org/conda-forge/"],
         SupportedChannels.PYTORCH: ["https://conda.anaconda.org/pytorch/"],
         SupportedChannels.BIOCONDA: ["https://conda.anaconda.org/bioconda/"],
-        SupportedChannels.TANGO_CONTROLS: ["https://conda.anaconda.org/tango-controls/"],
+        SupportedChannels.TANGO_CONTROLS: [
+            "https://conda.anaconda.org/tango-controls/"
+        ],
     }
 
     @staticmethod
