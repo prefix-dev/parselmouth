@@ -7,6 +7,7 @@ Url = str
 class BackendRequestType(StrEnum):
     OCI = "oci"
     STREAMED = "streamed"
+    DOWNLOAD = "download"
 
 
 class SupportedChannels(StrEnum):
