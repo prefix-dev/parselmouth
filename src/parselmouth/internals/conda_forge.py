@@ -123,8 +123,6 @@ def download_and_extract_artifact(
 
     artifact_url = f"https://conda.anaconda.org/{channel}/{subdir}/{artifact}"
 
-    # artifact_url = urljoin(base_url, f"{subdir}/{artifact}")
-
     try:
         # Download the package to a temporary file
         response = requests.get(artifact_url, stream=True)
@@ -159,13 +157,20 @@ def download_and_extract_artifact(
                         with zip_file.open(info_file) as info_tar:
                             with tarfile.open(fileobj=info_tar) as tar:
                                 return _extract_artifact_data_from_tar(tar)
+                else:
+                    logging.warning(f"No info files found in {artifact}")
+                    return None
+
+        except Exception as e:
+            logging.warning(f"Failed to process as zip file: {e}")
+            return None
 
         finally:
             # Clean up temporary file
             os.unlink(temp_file_path)
 
     except Exception as e:
-        logging.error(f"Failed to download and extract {artifact}: {e}")
+        logging.error(f"Failed to download or process {artifact}: {e}")
         return None
 
 
