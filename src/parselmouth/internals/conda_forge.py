@@ -18,6 +18,7 @@ import tempfile
 import shutil
 import subprocess
 import io
+import zipfile
 
 from parselmouth.internals.channels import ChannelUrls, SupportedChannels
 
@@ -97,16 +98,15 @@ def get_all_packages_by_subdir(
 ) -> dict[str, dict]:
     repodatas: dict[str, dict[str, dict]] = defaultdict(dict)
 
-    if not label and channel == SupportedChannels.TANGO_CONTROLS:
+    if not label and not channel.support_channeldata:
         # Fetch all labels for the channel
         labels = fetch_channel_labels(channel)
         for label in labels:
             repodata = get_subdir_repodata(subdir, channel, label)
-            # repodatas[label] = {}
             repodatas[label].update(repodata["packages"])
             repodatas[label].update(repodata["packages.conda"])
     else:
-        repodata = get_subdir_repodata(subdir, channel)
+        repodata = get_subdir_repodata(subdir, channel, label)
         repodatas["main"] = {}
         repodatas["main"].update(repodata["packages"])
         repodatas["main"].update(repodata["packages.conda"])
@@ -119,25 +119,24 @@ def download_and_extract_artifact(
     subdir: str,
     artifact: str,
 ) -> ArtifactData | None:
-    """Download and extract artifact data directly for channels that don't support range requests."""
+    """Download and extract .conda artifact data directly for channels that don't support range requests."""
+    if not artifact.endswith(".conda"):
+        raise ValueError(
+            f"This function only supports .conda artifacts. {artifact} was given for {channel}"
+        )
 
     artifact_url = f"https://conda.anaconda.org/{channel}/{subdir}/{artifact}"
 
-    try:
-        # Download the package to a temporary file
-        response = requests.get(artifact_url, stream=True)
-        response.raise_for_status()
+    # Download the package to a temporary file
+    response = requests.get(artifact_url, stream=True)
+    response.raise_for_status()
 
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            for chunk in response.iter_content(chunk_size=8192):
-                temp_file.write(chunk)
-            temp_file_path = temp_file.name
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        for chunk in response.iter_content(chunk_size=8192):
+            temp_file.write(chunk)
+        temp_file_path = temp_file.name
 
         try:
-            # Try to detect file type and extract accordingly
-            import zipfile
-
-            # First try as zip file (for .conda files)
             with zipfile.ZipFile(temp_file_path, "r") as zip_file:
                 file_list = zip_file.namelist()
                 logging.debug(f"Files in {artifact}: {file_list}")
@@ -164,14 +163,6 @@ def download_and_extract_artifact(
         except Exception as e:
             logging.warning(f"Failed to process as zip file: {e}")
             return None
-
-        finally:
-            # Clean up temporary file
-            os.unlink(temp_file_path)
-
-    except Exception as e:
-        logging.error(f"Failed to download or process {artifact}: {e}")
-        return None
 
 
 def _extract_from_zst_tar(zip_file, zst_file_path: str) -> ArtifactData | None:
@@ -490,11 +481,7 @@ def get_artifact_info(
     artifact,
     backend,
     channel: str = SupportedChannels.CONDA_FORGE.value,
-    label: str | None = None,
 ):
-    # channel_enum = SupportedChannels(channel)
-
-    # For Tango Controls, use direct download method to avoid range request issues
     if backend == "download":
         return download_and_extract_artifact(channel, subdir, artifact)
 

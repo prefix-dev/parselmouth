@@ -16,6 +16,14 @@ class SupportedChannels(StrEnum):
     BIOCONDA = "bioconda"
     TANGO_CONTROLS = "tango-controls"
 
+    @property
+    def support_channeldata(self) -> bool:
+        return self in {
+            SupportedChannels.CONDA_FORGE,
+            SupportedChannels.PYTORCH,
+            SupportedChannels.BIOCONDA,
+        }
+
 
 class ChannelUrls:
     _ChannelUrls: dict[SupportedChannels, list[Url]] = {

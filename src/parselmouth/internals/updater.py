@@ -142,7 +142,6 @@ def main(
         else:
             channel_to_request = channel
 
-        # import pdb; pdb.set_trace()
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = {
                 executor.submit(
