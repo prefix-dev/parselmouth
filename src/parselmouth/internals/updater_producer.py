@@ -27,9 +27,8 @@ def main(
     channel: SupportedChannels,
     subdir: str | None = None,
 ):
-    # Special handling for Tango Controls channel
-    if channel == SupportedChannels.TANGO_CONTROLS:
-        # return _main_with_labels(output_dir, check_if_exists, check_if_pypi_exists, channel, subdir)
+    # Special handling for channels that don't support channeldata
+    if not channel.support_channeldata:
         subdirs = DEFAULT_SUBDIRS
     else:
         # Original workflow for other channels

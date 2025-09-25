@@ -120,8 +120,8 @@ def main(
                 elif package_name.endswith(".tar.bz2") or package_name.endswith(
                     ".conda"
                 ):
-                    # Use streamed for other channels
-                    if channel == SupportedChannels.TANGO_CONTROLS:
+                    # Use streamed for other channels that dont support channeldata/ or range requests
+                    if not channel.support_channeldata:
                         all_packages.append((package_name, BackendRequestType.DOWNLOAD))
                     else:
                         all_packages.append((package_name, BackendRequestType.STREAMED))
@@ -135,10 +135,8 @@ def main(
         logging.warning(
             f"Total packages for processing: {len(all_packages)} for {subdir}"
         )
-        if channel == SupportedChannels.TANGO_CONTROLS:
-            channel_to_request = (
-                f"{SupportedChannels.TANGO_CONTROLS.value}/label/{label}"
-            )
+        if not channel.support_channeldata:
+            channel_to_request = f"{channel.value}/label/{label}"
         else:
             channel_to_request = channel
 
