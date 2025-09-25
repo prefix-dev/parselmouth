@@ -107,7 +107,12 @@ def main(
                 continue
 
             package = packages[package_name]
-            sha256 = package["sha256"]
+            # import pdb; pdb.set_trace()
+            try:
+                sha256 = package["sha256"]
+            except Exception as e:
+                import pdb; pdb.set_trace()
+                print(e)
             if sha256 not in existing_mapping_data.root:
                 # trying to get packages info using all backends.
                 if (

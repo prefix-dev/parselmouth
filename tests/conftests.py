@@ -1,3 +1,4 @@
+from collections import defaultdict
 from parselmouth.internals.channels import SupportedChannels
 from parselmouth.internals.conda_forge import get_subdir_repodata
 from parselmouth.internals.s3 import S3, IndexMapping, MappingEntry
@@ -41,10 +42,10 @@ def mocked_get_all_packages_by_subdir(
     repodatas.update(repodata["packages"])
     repodatas.update(repodata["packages.conda"])
 
-    small_repodatas = {}
+    small_repodatas = defaultdict(dict)
 
     for idx, pkg_name in enumerate(repodatas):
         if "pymongo" in pkg_name:
-            small_repodatas[pkg_name] = repodatas[pkg_name]
+            small_repodatas["main"][pkg_name] = repodatas[pkg_name]
 
     return small_repodatas
