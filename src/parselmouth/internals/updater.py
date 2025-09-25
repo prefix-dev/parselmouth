@@ -101,18 +101,13 @@ def main(
     repodatas_with_label = get_all_packages_by_subdir(subdir, channel)
     total_packages = set()
 
-    for idx, (label, packages) in enumerate(repodatas_with_label.items()):
+    for _idx, (label, packages) in enumerate(repodatas_with_label.items()):
         for package_name in packages:
             if not package_name.startswith(letter):
                 continue
 
             package = packages[package_name]
-            # import pdb; pdb.set_trace()
-            try:
-                sha256 = package["sha256"]
-            except Exception as e:
-                import pdb; pdb.set_trace()
-                print(e)
+            sha256 = package["sha256"]
             if sha256 not in existing_mapping_data.root:
                 # trying to get packages info using all backends.
                 if (
