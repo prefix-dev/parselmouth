@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from pathlib import Path
 import re
@@ -6,9 +7,10 @@ import re
 from parselmouth.internals.channels import SupportedChannels
 from parselmouth.internals.conda_forge import (
     get_all_archs_available,
-    get_subdir_repodata,
+    get_all_packages_by_subdir,
 )
 from parselmouth.internals.s3 import IndexMapping, s3_client
+from parselmouth.internals.subdirs import DEFAULT_SUBDIRS
 
 
 dist_info_pattern = r"([^/]+)-(\d+[^/]*)\.dist-info\/METADATA"
@@ -25,31 +27,12 @@ def main(
     channel: SupportedChannels,
     subdir: str | None = None,
 ):
-    subdirs = get_all_archs_available(channel)
-
-    if subdirs is None:
-        # fallback list of known subdirs
-        subdirs = [
-            "emscripten-wasm32",
-            "freebsd-64",
-            "linux-32",
-            "linux-64",
-            "linux-aarch64",
-            "linux-armv6l",
-            "linux-armv7l",
-            "linux-ppc64",
-            "linux-ppc64le",
-            "linux-riscv64",
-            "linux-s390x",
-            "noarch",
-            "osx-64",
-            "osx-arm64",
-            "wasi-wasm32",
-            "win-32",
-            "win-64",
-            "win-arm64",
-            "zos-z",
-        ]
+    # Special handling for channels that don't support channeldata
+    if not channel.support_channeldata:
+        subdirs = DEFAULT_SUBDIRS
+    else:
+        # Original workflow for other channels
+        subdirs = get_all_archs_available(channel)
 
     # filter out the subdir we want to update
     if subdir and subdir in subdirs:
@@ -70,27 +53,30 @@ def main(
     letters = set()
 
     for subdir in subdirs:
-        repodatas = {}
-        repodata = get_subdir_repodata(subdir, channel)
+        # repodatas = {}
+        packages_with_label = get_all_packages_by_subdir(subdir, channel)
 
-        repodatas.update(repodata["packages"])
-        repodatas.update(repodata["packages.conda"])
+        for label, packages in packages_with_label.items():
+            for package_name in packages:
+                package = packages[package_name]
+                sha256 = package.get("sha256")
+                if not sha256:
+                    logging.warning(
+                        f"Package {package_name} in subdir {subdir} does not have sha256. Skipping."
+                    )
+                    continue
 
-        for package_name in repodatas:
-            package = repodatas[package_name]
-            sha256 = package["sha256"]
-
-            if sha256 not in existing_mapping_data.root:
-                all_packages.append(package_name)
-                letters.add(f"{subdir}@{package_name[0]}")
-
-            elif check_if_pypi_exists:
-                # If the package already exists, we check if it has pypi_normalized_names
-                existing_entry = existing_mapping_data.root[sha256]
-                # If it does not have pypi_normalized_names, we add it to the list
-                if existing_entry.pypi_normalized_names is None:
+                if sha256 not in existing_mapping_data.root:
                     all_packages.append(package_name)
                     letters.add(f"{subdir}@{package_name[0]}")
+
+                elif check_if_pypi_exists:
+                    # If the package already exists, we check if it has pypi_normalized_names
+                    existing_entry = existing_mapping_data.root[sha256]
+                    # If it does not have pypi_normalized_names, we add it to the list
+                    if existing_entry.pypi_normalized_names is None:
+                        all_packages.append(package_name)
+                        letters.add(f"{subdir}@{package_name[0]}")
 
     index_location = Path(output_dir) / channel / "index.json"
     os.makedirs(index_location.parent, exist_ok=True)

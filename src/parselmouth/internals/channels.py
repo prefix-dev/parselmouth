@@ -7,6 +7,7 @@ Url = str
 class BackendRequestType(StrEnum):
     OCI = "oci"
     STREAMED = "streamed"
+    DOWNLOAD = "download"
 
 
 class SupportedChannels(StrEnum):
@@ -14,6 +15,14 @@ class SupportedChannels(StrEnum):
     PYTORCH = "pytorch"
     BIOCONDA = "bioconda"
     TANGO_CONTROLS = "tango-controls"
+
+    @property
+    def support_channeldata(self) -> bool:
+        return self in {
+            SupportedChannels.CONDA_FORGE,
+            SupportedChannels.PYTORCH,
+            SupportedChannels.BIOCONDA,
+        }
 
 
 class ChannelUrls:
