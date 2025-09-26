@@ -107,7 +107,13 @@ def main(
                 continue
 
             package = packages[package_name]
-            sha256 = package["sha256"]
+            sha256 = package.get("sha256")
+            if not sha256:
+                logging.warning(
+                    f"Package {package_name} in subdir {subdir} for label {label} does not have sha256. Skipping."
+                )
+                continue
+
             if sha256 not in existing_mapping_data.root:
                 # trying to get packages info using all backends.
                 if (
