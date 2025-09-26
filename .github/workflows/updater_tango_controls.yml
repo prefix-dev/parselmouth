@@ -31,6 +31,7 @@ jobs:
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
             R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
             R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
+            ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
 
         - name: Upload requested index.json
           uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -63,6 +64,7 @@ jobs:
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
             R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
             R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
+            ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
 
       - name: Upload partial index
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -90,6 +92,7 @@ jobs:
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
             R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
             R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
+            ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
 
   update_file:
     runs-on: ubuntu-latest
@@ -112,6 +115,7 @@ jobs:
           R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
           R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
           R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
+          ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
 
       - name: Commit and push changes
         env:
