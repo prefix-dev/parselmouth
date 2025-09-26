@@ -15,10 +15,9 @@ from conda_forge_metadata.artifact_info.info_json import (
 from conda_forge_metadata.types import ArtifactData
 from urllib.parse import urljoin
 import tempfile
-import shutil
-import subprocess
 import io
 import zipfile
+import zstandard as zstd
 
 from parselmouth.internals.channels import ChannelUrls, SupportedChannels
 
@@ -168,128 +167,19 @@ def download_and_extract_artifact(
 def _extract_from_zst_tar(zip_file, zst_file_path: str) -> ArtifactData | None:
     """Extract artifact data from a Zstandard compressed tar file within a zip."""
     try:
-        # Try using zstd library if available
-        try:
-            import zstandard as zstd
+        with zip_file.open(zst_file_path) as zst_data:
+            # Read all zst data into memory first
+            zst_bytes = zst_data.read()
+            dctx = zstd.ZstdDecompressor()
+            decompressed_bytes = dctx.decompress(zst_bytes)
 
-            with zip_file.open(zst_file_path) as zst_data:
-                # Read all zst data into memory first
-                zst_bytes = zst_data.read()
-                dctx = zstd.ZstdDecompressor()
-                decompressed_bytes = dctx.decompress(zst_bytes)
-
-                # Open decompressed tar data from memory
-                with tarfile.open(
-                    fileobj=io.BytesIO(decompressed_bytes), mode="r"
-                ) as tar:
-                    return _extract_artifact_data_from_tar_stream(tar)
-        except ImportError:
-            # Fallback to subprocess if zstd library not available
-            logging.info("zstandard library not available, trying subprocess")
-
-            # Extract zst file to temporary location
-            with tempfile.NamedTemporaryFile(
-                suffix=".tar.zst", delete=False
-            ) as temp_zst:
-                with zip_file.open(zst_file_path) as zst_data:
-                    shutil.copyfileobj(zst_data, temp_zst)
-                temp_zst_path = temp_zst.name
-
-            try:
-                # Decompress using zstd command line tool
-                result = subprocess.run(
-                    ["zstd", "-d", "-c", temp_zst_path], capture_output=True, check=True
-                )
-
-                # Open decompressed tar data
-                with tarfile.open(fileobj=io.BytesIO(result.stdout), mode="r") as tar:
-                    return _extract_artifact_data_from_tar_stream(tar)
-            finally:
-                os.unlink(temp_zst_path)
+            # Open decompressed tar data from memory
+            with tarfile.open(fileobj=io.BytesIO(decompressed_bytes), mode="r") as tar:
+                return _extract_artifact_data_from_tar_stream(tar)
 
     except Exception as e:
         logging.error(f"Failed to extract from zstd file {zst_file_path}: {e}")
         return None
-
-
-def _extract_artifact_data_from_zip(zip_file) -> ArtifactData | None:
-    """Extract artifact data from a zip file structure."""
-    data = {
-        "metadata_version": 1,
-        "name": "",
-        "version": "",
-        "index": {},
-        "about": {},
-        "rendered_recipe": {},
-        "raw_recipe": "",
-        "conda_build_config": {},
-        "files": [],
-    }
-
-    YAML = yaml.YAML(typ="safe")
-    YAML.allow_duplicate_keys = True
-    old_files = None
-
-    for file_path in zip_file.namelist():
-        path = Path(file_path)
-
-        # Skip directories
-        if file_path.endswith("/"):
-            continue
-
-        # Handle different possible structures
-        if len(path.parts) > 1 and path.parts[0] == "info":
-            path = Path(*path.parts[1:])
-
-        if path.parts and path.parts[0] in ("test", "tests", "licenses"):
-            continue
-
-        try:
-            with zip_file.open(file_path) as content_file:
-                content_str = content_file.read().decode("utf-8", errors="ignore")
-
-            if path.name == "index.json":
-                index = json.loads(content_str)
-                data["name"] = index.get("name", "")
-                data["version"] = index.get("version", "")
-                data["index"] = index
-            elif path.name == "about.json":
-                data["about"] = json.loads(content_str)
-            elif path.name == "conda_build_config.yaml":
-                data["conda_build_config"] = YAML.load(content_str)
-            elif path.name == "files":
-                old_files = content_str.splitlines()
-            elif path.name == "paths.json":
-                paths = json.loads(content_str)
-                paths = paths.get("paths", [])
-                all_paths = [p["_path"] for p in paths]
-                data["files"] = [
-                    f for f in all_paths if not f.lower().endswith((".pyc", ".txt"))
-                ]
-            elif path.name == "meta.yaml.template":
-                data["raw_recipe"] = content_str
-            elif path.name == "meta.yaml":
-                if ("{{" in content_str or "{%" in content_str) and not data[
-                    "raw_recipe"
-                ]:
-                    data["raw_recipe"] = content_str
-                else:
-                    data["rendered_recipe"] = YAML.load(content_str)
-
-        except Exception as e:
-            logging.warning(f"Failed to process {file_path}: {e}")
-            continue
-
-    # Fallback to old files format if paths.json wasn't found
-    if not data["files"] and old_files is not None:
-        data["files"] = [
-            f for f in old_files if not f.lower().endswith((".pyc", ".txt"))
-        ]
-
-    if data["name"]:
-        return data  # type: ignore
-
-    return None
 
 
 def _extract_artifact_data_from_tar_stream(tar: tarfile.TarFile) -> ArtifactData | None:
@@ -371,7 +261,7 @@ def _extract_artifact_data_from_tar_stream(tar: tarfile.TarFile) -> ArtifactData
                     logging.warning(f"Failed to parse paths.json: {e}")
             elif path.name == "meta.yaml.template":
                 data["raw_recipe"] = content_str
-            elif path.name == "meta.yaml":
+            elif path.name == "meta.yaml" or path.name == "recipe.yaml":
                 try:
                     if ("{{" in content_str or "{%" in content_str) and not data[
                         "raw_recipe"
