@@ -1,9 +1,9 @@
 # name: Run updater for tango-controls that will check for tango-controls packages
 
 on:
-    # schedule:
-    #   # run the job every 10 minutes
-    #   - cron:  '*/10 * * * *'
+    schedule:
+      # run the job every 10 minutes
+      - cron:  '*/10 * * * *'
     workflow_dispatch:
 
 concurrency:
