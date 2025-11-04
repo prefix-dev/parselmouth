@@ -1,0 +1,331 @@
+"""
+Package Relations Table - Single Source of Truth
+
+This module implements a table-based approach for storing the relationship between
+Conda packages and PyPI packages. The relationship "conda package C includes PyPI
+package P at version V" is stored as rows in a table.
+
+From this master table, we can efficiently generate:
+- PyPI -> Conda lookups
+- Conda (hash) -> PyPI lookups
+- Analytics and statistics
+
+The table is stored as JSON Lines (.jsonl) format for:
+- Streaming support (can read/write incrementally)
+- Human readability (one JSON object per line)
+- Easy appending (just add new lines)
+- Simple processing (no complex parsing)
+"""
+
+import gzip
+import io
+import json
+import logging
+from collections import defaultdict
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterator, Optional
+
+from pydantic import BaseModel, Field, field_validator
+
+from parselmouth.internals.channels import SupportedChannels
+from parselmouth.internals.s3 import IndexMapping, MappingEntry
+from parselmouth.internals.types import (
+    CondaFileName,
+    CondaPackageName,
+    PyPIName,
+    PyPISourceUrl,
+    PyPIVersion,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class PackageRelation(BaseModel):
+    """
+    A single relation representing that a conda package includes a PyPI package.
+
+    This is the atomic unit of the mapping. Multiple relations form the complete
+    mapping table.
+    """
+
+    # Conda package information
+    conda_name: CondaPackageName
+    conda_filename: CondaFileName
+    conda_hash: str = Field(description="SHA256 hash of the conda package")
+
+    # PyPI package information
+    pypi_name: PyPIName
+    pypi_version: PyPIVersion
+
+    # Metadata
+    channel: str
+    direct_url: Optional[list[PyPISourceUrl]] = Field(
+        default=None,
+        description="Direct URLs when package is not on PyPI index"
+    )
+
+    @field_validator('conda_hash')
+    @classmethod
+    def validate_hash(cls, v: str) -> str:
+        """Ensure hash is lowercase hex string"""
+        if not all(c in '0123456789abcdef' for c in v):
+            raise ValueError(f"Hash must be lowercase hex string, got: {v}")
+        return v
+
+
+class RelationsTableMetadata(BaseModel):
+    """Metadata for the relations table"""
+
+    format_version: str = Field(default="1.0", description="Table format version")
+    channel: str
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    total_relations: int
+    unique_conda_packages: int
+    unique_pypi_packages: int
+    description: str = "Conda to PyPI package relations table"
+
+
+class RelationsTable:
+    """
+    Manages the package relations table.
+
+    The table is stored as JSON Lines format where each line is a PackageRelation.
+    This allows for streaming reads/writes and easy appending.
+    """
+
+    def __init__(self, channel: SupportedChannels):
+        self.channel = channel
+        self.relations: list[PackageRelation] = []
+
+    @classmethod
+    def from_conda_to_pypi_index(
+        cls,
+        index: IndexMapping,
+        channel: SupportedChannels
+    ) -> "RelationsTable":
+        """
+        Build relations table from existing conda->pypi hash-based index.
+
+        This converts the existing mapping structure into a normalized table.
+        """
+        table = cls(channel)
+
+        logger.info(f"Building relations table from {len(index.root)} conda packages")
+
+        for conda_hash, entry in index.root.items():
+            relations = cls._entry_to_relations(conda_hash, entry, str(channel))
+            table.relations.extend(relations)
+
+        logger.info(f"Created table with {len(table.relations)} relations")
+        return table
+
+    @staticmethod
+    def _entry_to_relations(
+        conda_hash: str,
+        entry: MappingEntry,
+        channel: str
+    ) -> list[PackageRelation]:
+        """Convert a MappingEntry to one or more PackageRelation objects"""
+        relations = []
+
+        if not entry.pypi_normalized_names:
+            return relations
+
+        # Each conda package can map to multiple PyPI packages
+        for pypi_name in entry.pypi_normalized_names:
+            if not entry.versions or pypi_name not in entry.versions:
+                logger.warning(
+                    f"No version found for {pypi_name} in {entry.package_name}"
+                )
+                continue
+
+            relation = PackageRelation(
+                conda_name=entry.conda_name,
+                conda_filename=entry.package_name,
+                conda_hash=conda_hash,
+                pypi_name=pypi_name,
+                pypi_version=entry.versions[pypi_name],
+                channel=channel,
+                direct_url=entry.direct_url,
+            )
+            relations.append(relation)
+
+        return relations
+
+    def to_jsonl(self, compress: bool = True) -> bytes:
+        """
+        Serialize table to JSON Lines format.
+
+        Args:
+            compress: If True, gzip compress the output
+
+        Returns:
+            Bytes containing the JSONL data (optionally compressed)
+        """
+        lines = []
+        for relation in self.relations:
+            lines.append(relation.model_dump_json())
+
+        jsonl_content = "\n".join(lines).encode("utf-8")
+
+        if compress:
+            buffer = io.BytesIO()
+            with gzip.GzipFile(fileobj=buffer, mode='wb') as gz:
+                gz.write(jsonl_content)
+            return buffer.getvalue()
+
+        return jsonl_content
+
+    @classmethod
+    def from_jsonl(cls, data: bytes, channel: SupportedChannels, compressed: bool = True) -> "RelationsTable":
+        """
+        Load table from JSON Lines format.
+
+        Args:
+            data: The JSONL data as bytes
+            channel: The channel this table belongs to
+            compressed: If True, decompress with gzip first
+
+        Returns:
+            RelationsTable instance
+        """
+        table = cls(channel)
+
+        if compressed:
+            data = gzip.decompress(data)
+
+        for line in data.decode("utf-8").splitlines():
+            if line.strip():
+                relation = PackageRelation.model_validate_json(line)
+                table.relations.append(relation)
+
+        return table
+
+    def iter_relations(self) -> Iterator[PackageRelation]:
+        """Iterate over all relations"""
+        return iter(self.relations)
+
+    def get_metadata(self) -> RelationsTableMetadata:
+        """Generate metadata about the table"""
+        unique_conda = set((r.conda_name, r.conda_hash) for r in self.relations)
+        unique_pypi = set(r.pypi_name for r in self.relations)
+
+        return RelationsTableMetadata(
+            channel=str(self.channel),
+            total_relations=len(self.relations),
+            unique_conda_packages=len(unique_conda),
+            unique_pypi_packages=len(unique_pypi),
+        )
+
+    def generate_pypi_to_conda_lookups(self) -> dict[PyPIName, dict[PyPIVersion, list[CondaPackageName]]]:
+        """
+        Generate PyPI -> Conda lookup mapping from the table.
+
+        Returns dict of: {pypi_name: {pypi_version: [conda_names]}}
+
+        This is a derived view - the table is the source of truth.
+        """
+        logger.info("Generating PyPI -> Conda lookups from relations table")
+
+        # Use sets during building to avoid duplicates
+        lookup: dict[PyPIName, dict[PyPIVersion, set[CondaPackageName]]] = defaultdict(
+            lambda: defaultdict(set)
+        )
+
+        for relation in self.relations:
+            lookup[relation.pypi_name][relation.pypi_version].add(relation.conda_name)
+
+        # Convert sets to sorted lists for consistent output
+        result: dict[PyPIName, dict[PyPIVersion, list[CondaPackageName]]] = {}
+        for pypi_name, versions in lookup.items():
+            result[pypi_name] = {
+                version: sorted(conda_names)
+                for version, conda_names in versions.items()
+            }
+
+        logger.info(f"Generated lookups for {len(result)} PyPI packages")
+        return result
+
+    def generate_conda_to_pypi_lookups(self) -> dict[str, MappingEntry]:
+        """
+        Generate Conda (hash) -> PyPI lookup mapping from the table.
+
+        Returns dict of: {conda_hash: MappingEntry}
+
+        This reconstructs the original MappingEntry format from the table.
+        """
+        logger.info("Generating Conda -> PyPI lookups from relations table")
+
+        # Group relations by conda hash
+        by_hash: dict[str, list[PackageRelation]] = defaultdict(list)
+        for relation in self.relations:
+            by_hash[relation.conda_hash].append(relation)
+
+        result = {}
+        for conda_hash, relations in by_hash.items():
+            # All relations for same hash should have same conda info
+            first = relations[0]
+
+            pypi_names = [r.pypi_name for r in relations]
+            versions = {r.pypi_name: r.pypi_version for r in relations}
+
+            # Take direct_url from first relation (should be same for all)
+            direct_url = first.direct_url
+
+            entry = MappingEntry(
+                pypi_normalized_names=pypi_names,
+                versions=versions,
+                conda_name=first.conda_name,
+                package_name=first.conda_filename,
+                direct_url=direct_url,
+            )
+            result[conda_hash] = entry
+
+        logger.info(f"Generated lookups for {len(result)} Conda packages")
+        return result
+
+
+class PyPIPackageLookup(BaseModel):
+    """
+    Lookup response for a single PyPI package.
+
+    This is what gets served at: /pypi-to-conda-v1/{channel}/{pypi_name}.json
+    """
+
+    format_version: str = "1.0"
+    channel: str
+    pypi_name: PyPIName
+    versions: dict[PyPIVersion, list[CondaPackageName]] = Field(
+        description="Map of PyPI version to list of Conda package names that provide it"
+    )
+
+    def to_json_bytes(self) -> bytes:
+        """Serialize to JSON bytes for uploading"""
+        return self.model_dump_json(indent=None).encode("utf-8")
+
+
+def create_pypi_lookup_files(
+    table: RelationsTable,
+) -> dict[PyPIName, PyPIPackageLookup]:
+    """
+    Create individual lookup files for each PyPI package.
+
+    These are the files that will be served at:
+    /pypi-to-conda-v1/{channel}/{pypi_name}.json
+
+    Returns:
+        Dict mapping pypi_name to its lookup object
+    """
+    pypi_to_conda = table.generate_pypi_to_conda_lookups()
+
+    lookups = {}
+    for pypi_name, versions in pypi_to_conda.items():
+        lookup = PyPIPackageLookup(
+            channel=str(table.channel),
+            pypi_name=pypi_name,
+            versions=versions,
+        )
+        lookups[pypi_name] = lookup
+
+    return lookups
