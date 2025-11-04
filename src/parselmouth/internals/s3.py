@@ -12,7 +12,6 @@ from botocore.config import Config
 from pydantic import BaseModel, RootModel
 
 from parselmouth.internals.channels import SupportedChannels
-from parselmouth.internals.schema import SchemaJsonEncoder
 from parselmouth.internals.types import (
     PyPIName,
     PyPISourceUrl,
@@ -20,20 +19,17 @@ from parselmouth.internals.types import (
     CondaFileName,
     CondaPackageName,
 )
-from parselmouth.internals.pypi_mapping import PyPIToCondaMapping
 
 CURRENT_VERSION = "v0"
+RELATIONS_VERSION = "v1"
 
 # Name of the main index file
 INDEX_FILE = "index.json"
 
-# Name of the url that contains the mapping between PyPI and Conda
+# Relations table files
+RELATIONS_TABLE_FILE = "relations.jsonl.gz"
+RELATIONS_METADATA_FILE = "metadata.json"
 PYPI_TO_CONDA = "pypi-to-conda"
-# Name of the index file for the PyPI to Conda mapping
-PYPI_TO_CONDA_INDEX = "index"
-
-SCHEMA = "schema"
-SCHEMA_FILE = "schema.json"
 
 
 class MappingEntry(BaseModel):
@@ -127,54 +123,6 @@ class S3:
             output_as_file, self.bucket_name, f"hash-{CURRENT_VERSION}/{file_name}"
         )
 
-    def upload_pypi_mapping(
-        self,
-        entry: PyPIToCondaMapping,
-        file_name: PyPIName,
-        channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
-    ):
-        """
-        Upload PyPI to conda name mapping
-        """
-        file_name = f"{PYPI_TO_CONDA}-{CURRENT_VERSION}/{channel}/{file_name}.json"
-
-        output = json.dumps(entry)
-        output_as_file = io.BytesIO(output.encode("utf-8"))
-
-        self._s3_client.upload_fileobj(
-            output_as_file,
-            self.bucket_name,
-            f"{PYPI_TO_CONDA}-{CURRENT_VERSION}/{channel}/{file_name}.json",
-        )
-
-    def upload_pypi_mapping_index(
-        self,
-        entry: dict[str, dict[str, list[str]]],
-        channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
-    ):
-        output = json.dumps(entry)
-        output_as_file = io.BytesIO(output.encode("utf-8"))
-
-        self._s3_client.upload_fileobj(
-            output_as_file,
-            self.bucket_name,
-            f"{PYPI_TO_CONDA}-{CURRENT_VERSION}/{channel}/{PYPI_TO_CONDA_INDEX}/{INDEX_FILE}",
-        )
-
-    def upload_pypi_mapping_schema(
-        self,
-        entry: dict[str, Any],
-        channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
-    ):
-        output = json.dumps(entry, cls=SchemaJsonEncoder)
-        output_as_file = io.BytesIO(output.encode("utf-8"))
-
-        self._s3_client.upload_fileobj(
-            output_as_file,
-            self.bucket_name,
-            f"{PYPI_TO_CONDA}-{CURRENT_VERSION}/{channel}/{SCHEMA}/{SCHEMA_FILE}",
-        )
-
     def upload_index(self, entry: IndexMapping, channel: SupportedChannels):
         output = entry.model_dump_json()
         output_as_file = io.BytesIO(output.encode("utf-8"))
@@ -184,6 +132,90 @@ class S3:
             self.bucket_name,
             f"hash-{CURRENT_VERSION}/{channel}/{INDEX_FILE}",
         )
+
+    # ===== Relations Table Methods =====
+
+    def upload_relations_table(
+        self,
+        table_data: bytes,
+        channel: SupportedChannels,
+    ) -> None:
+        """
+        Upload the master relations table (JSONL format, gzipped).
+
+        This is the single source of truth for package relations.
+        URL: /relations-{RELATIONS_VERSION}/{channel}/relations.jsonl.gz
+        """
+        key = f"relations-{RELATIONS_VERSION}/{channel}/{RELATIONS_TABLE_FILE}"
+        logging.info(f"Uploading relations table to {key}")
+
+        self._s3_client.upload_fileobj(
+            io.BytesIO(table_data),
+            self.bucket_name,
+            key,
+        )
+
+    def upload_relations_metadata(
+        self,
+        metadata: dict[str, Any],
+        channel: SupportedChannels,
+    ) -> None:
+        """
+        Upload metadata about the relations table.
+
+        URL: /relations-{RELATIONS_VERSION}/{channel}/metadata.json
+        """
+        key = f"relations-{RELATIONS_VERSION}/{channel}/{RELATIONS_METADATA_FILE}"
+        logging.info(f"Uploading relations metadata to {key}")
+
+        output = json.dumps(metadata, indent=2)
+        self._s3_client.upload_fileobj(
+            io.BytesIO(output.encode("utf-8")),
+            self.bucket_name,
+            key,
+        )
+
+    def upload_pypi_lookup_file(
+        self,
+        pypi_name: PyPIName,
+        data: bytes,
+        channel: SupportedChannels,
+    ) -> None:
+        """
+        Upload a single PyPI -> Conda lookup file.
+
+        These are derived from the relations table and cached for fast lookups.
+        URL: /pypi-to-conda-{RELATIONS_VERSION}/{channel}/{pypi_name}.json
+        """
+        key = f"{PYPI_TO_CONDA}-{RELATIONS_VERSION}/{channel}/{pypi_name}.json"
+
+        self._s3_client.upload_fileobj(
+            io.BytesIO(data),
+            self.bucket_name,
+            key,
+        )
+
+    def get_relations_table(
+        self,
+        channel: SupportedChannels,
+    ) -> Optional[bytes]:
+        """
+        Download the master relations table.
+
+        Returns:
+            The compressed JSONL data, or None if not found
+        """
+        key = f"relations-{RELATIONS_VERSION}/{channel}/{RELATIONS_TABLE_FILE}"
+
+        try:
+            response = self._s3_client.get_object(
+                Bucket=self.bucket_name,
+                Key=key,
+            )
+            return response["Body"].read()
+        except self._s3_client.exceptions.NoSuchKey:
+            logging.warning(f"Relations table not found: {key}")
+            return None
 
 
 s3_client = S3()

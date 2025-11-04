@@ -8,7 +8,7 @@ from parselmouth.internals.check_one import main as check_one_main
 from parselmouth.internals.updater_merger import main as update_merger_main
 from parselmouth.internals.legacy_mapping import main as legacy_mapping_main
 from parselmouth.internals.mapping_transformer import main as mapping_transformer_main
-from parselmouth.internals.pypi_mapping import main as pypi_mapping_main
+from parselmouth.internals.relations_updater import main as relations_updater_main
 from parselmouth.internals.remover import main as remover_main
 
 from parselmouth.internals.channels import SupportedChannels
@@ -110,14 +110,38 @@ def update_mapping(channel: SupportedChannels = SupportedChannels.CONDA_FORGE):
 
 
 @app.command()
-def update_pypi_to_conda_mapping(
+def update_relations_table(
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+    upload: Annotated[
+        bool,
+        typer.Option(help="Upload results to S3. If False, only saves locally."),
+    ] = False,
+    output_dir: Annotated[
+        str | None,
+        typer.Option(help="Directory to save files locally (optional)."),
+    ] = None,
 ):
     """
-    This is used to update compressed files in the repository.
-    """
+    Generate and upload the package relations table (recommended approach).
 
-    pypi_mapping_main(channel=channel)
+    This creates:
+    - Master relations table (JSONL) at /relations-v1/{channel}/relations.jsonl.gz
+    - PyPI -> Conda lookup files at /pypi-to-conda-v1/{channel}/{pypi_name}.json
+
+    The table-based approach is the single source of truth for package mappings.
+    Both Conda->PyPI and PyPI->Conda lookups are derived from this table.
+
+    Examples:
+        # Generate and save locally
+        parselmouth update-relations-table --output-dir ./output
+
+        # Generate and upload to S3 (CI/production)
+        parselmouth update-relations-table --upload
+
+        # Both save locally and upload
+        parselmouth update-relations-table --upload --output-dir ./output
+    """
+    relations_updater_main(channel=channel, upload=upload, output_dir=output_dir)
 
 
 @app.command()
