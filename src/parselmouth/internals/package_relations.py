@@ -33,12 +33,56 @@ from parselmouth.internals.s3 import IndexMapping, MappingEntry
 from parselmouth.internals.types import (
     CondaFileName,
     CondaPackageName,
+    CondaVersion,
     PyPIName,
     PyPISourceUrl,
     PyPIVersion,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def parse_conda_filename(filename: CondaFileName) -> tuple[CondaVersion, str]:
+    """
+    Parse conda filename to extract version and build string.
+
+    Example: "numpy-1.26.4-py311h64a7726_0.conda" -> ("1.26.4", "py311h64a7726_0")
+
+    Args:
+        filename: Conda package filename
+
+    Returns:
+        Tuple of (version, build_string)
+    """
+    # Remove .conda or .tar.bz2 extension
+    name = filename.replace('.conda', '').replace('.tar.bz2', '')
+
+    # Split by '-' to get [package_name, version, build]
+    # Note: package name itself might contain '-', so we split from the right
+    parts = name.rsplit('-', 2)
+
+    if len(parts) >= 3:
+        version = parts[-2]
+        build = parts[-1]
+        return version, build
+
+    # Fallback if parsing fails
+    logger.warning(f"Could not parse conda filename: {filename}")
+    return "unknown", "unknown"
+
+
+class CondaPackageVersion(BaseModel):
+    """
+    Information about a conda package version that provides a PyPI package.
+
+    This includes the conda package name, version, and all build variants.
+    """
+
+    name: CondaPackageName
+    version: CondaVersion
+    builds: list[str] = Field(
+        description="List of build strings for this version (e.g., ['py311h64a7726_0', 'py310h4bfa8fc_0'])"
+    )
 
 
 class PackageRelation(BaseModel):
@@ -218,31 +262,44 @@ class RelationsTable:
             unique_pypi_packages=len(unique_pypi),
         )
 
-    def generate_pypi_to_conda_lookups(self) -> dict[PyPIName, dict[PyPIVersion, list[CondaPackageName]]]:
+    def generate_pypi_to_conda_lookups(self) -> dict[PyPIName, dict[PyPIVersion, list[CondaPackageVersion]]]:
         """
         Generate PyPI -> Conda lookup mapping from the table.
 
-        Returns dict of: {pypi_name: {pypi_version: [conda_names]}}
+        Returns dict of: {pypi_name: {pypi_version: [CondaPackageVersion]}}
 
         This is a derived view - the table is the source of truth.
         """
         logger.info("Generating PyPI -> Conda lookups from relations table")
 
-        # Use sets during building to avoid duplicates
-        lookup: dict[PyPIName, dict[PyPIVersion, set[CondaPackageName]]] = defaultdict(
-            lambda: defaultdict(set)
+        # Build intermediate structure: {pypi_name: {pypi_version: {conda_name: {conda_version: [builds]}}}}
+        lookup: dict[PyPIName, dict[PyPIVersion, dict[CondaPackageName, dict[CondaVersion, set[str]]]]] = defaultdict(
+            lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
         )
 
         for relation in self.relations:
-            lookup[relation.pypi_name][relation.pypi_version].add(relation.conda_name)
+            # Parse conda filename to get version and build
+            conda_version, build_string = parse_conda_filename(relation.conda_filename)
 
-        # Convert sets to sorted lists for consistent output
-        result: dict[PyPIName, dict[PyPIVersion, list[CondaPackageName]]] = {}
+            # Add to nested structure
+            lookup[relation.pypi_name][relation.pypi_version][relation.conda_name][conda_version].add(build_string)
+
+        # Convert to final structure with CondaPackageVersion objects
+        result: dict[PyPIName, dict[PyPIVersion, list[CondaPackageVersion]]] = {}
         for pypi_name, versions in lookup.items():
-            result[pypi_name] = {
-                version: sorted(conda_names)
-                for version, conda_names in versions.items()
-            }
+            result[pypi_name] = {}
+            for pypi_version, conda_packages in versions.items():
+                conda_pkg_versions = []
+                for conda_name, conda_versions in sorted(conda_packages.items()):
+                    for conda_version, builds in sorted(conda_versions.items()):
+                        conda_pkg_versions.append(
+                            CondaPackageVersion(
+                                name=conda_name,
+                                version=conda_version,
+                                builds=sorted(builds)
+                            )
+                        )
+                result[pypi_name][pypi_version] = conda_pkg_versions
 
         logger.info(f"Generated lookups for {len(result)} PyPI packages")
         return result
@@ -296,8 +353,8 @@ class PyPIPackageLookup(BaseModel):
     format_version: str = "1.0"
     channel: str
     pypi_name: PyPIName
-    versions: dict[PyPIVersion, list[CondaPackageName]] = Field(
-        description="Map of PyPI version to list of Conda package names that provide it"
+    versions: dict[PyPIVersion, list[CondaPackageVersion]] = Field(
+        description="Map of PyPI version to list of Conda packages (with versions and builds) that provide it"
     )
 
     def to_json_bytes(self) -> bytes:
