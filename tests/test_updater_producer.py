@@ -13,7 +13,10 @@ def test_updater_producer_catch_new_packages(tmp_path, capsys):
 
     tmp_dir = tmp_path / "tmp_output_index"
     updater_producer.main(
-        output_dir=tmp_dir, check_if_exists=True, channel=SupportedChannels.CONDA_FORGE
+        output_dir=tmp_dir,
+        check_if_exists=True,
+        check_if_pypi_exists=False,
+        channel=SupportedChannels.CONDA_FORGE,
     )
 
     captured = capsys.readouterr()

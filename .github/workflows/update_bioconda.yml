@@ -1,9 +1,9 @@
-# name: Run updater for conda-forge that will check for conda-forge packages
+# name: Run updater for bioconda that will check for bioconda packages
 
 on:
     schedule:
-      # run the job every 10 minutes
-      - cron:  '*/10 * * * *'
+      # run the job every 30 minutes as that seems frequent enough for bioconda
+      - cron:  '*/30 * * * *'
     workflow_dispatch:
 
 concurrency:
@@ -23,7 +23,11 @@ jobs:
           run: |
             # Run your script here to produce a list of missing subdirs and letters
             # example: linux-64@p linux-64@d
-            message=$(pixi run parselmouth updater-producer --channel conda-forge)
+            message=$(pixi run parselmouth updater-producer --channel bioconda)
+            if [ "$message" = "[]" ]; then
+              echo "Skipping job as no new packages found"
+              exit 0
+            fi
             echo $message
             echo "string_list=$message" >> $GITHUB_OUTPUT
           env:
@@ -57,7 +61,7 @@ jobs:
             path: output_index
 
       - name: Get artifact info for subdir@letter and save into partial index
-        run: pixi run parselmouth updater ${{ matrix.subdirs }} --channel conda-forge --upload
+        run: pixi run parselmouth updater ${{ matrix.subdirs }} --channel bioconda --upload
         env:
             R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
@@ -84,7 +88,7 @@ jobs:
             path: output
 
         - name: Combine all partial index and save into S3 index
-          run: pixi run parselmouth updater-merger --upload --channel conda-forge
+          run: pixi run parselmouth updater-merger --upload --channel bioconda
           env:
             R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
@@ -100,12 +104,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
       - uses: prefix-dev/setup-pixi@v0.9.3
 
-      - name: Update grayskull mapping and compressed mapping
+      - name: Update compressed mapping
         run: |
-          pixi run parselmouth update-mapping-legacy
-          pixi run parselmouth update-mapping
+          # for bioconda we dont need to use legacy mapping anymore
+          pixi run parselmouth update-mapping --channel bioconda
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
@@ -119,8 +124,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add files/mapping_as_grayskull.json
-          git add files/compressed_mapping.json
-          git add files/v0
+          git pull
+          git add files/v0/bioconda
           git commit -m "Update file via GitHub Action" || true
           git push

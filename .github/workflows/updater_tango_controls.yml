@@ -1,4 +1,4 @@
-# name: Run updater for conda-forge that will check for conda-forge packages
+# name: Run updater for tango-controls that will check for tango-controls packages
 
 on:
     schedule:
@@ -23,7 +23,7 @@ jobs:
           run: |
             # Run your script here to produce a list of missing subdirs and letters
             # example: linux-64@p linux-64@d
-            message=$(pixi run parselmouth updater-producer --channel conda-forge)
+            message=$(pixi run parselmouth updater-producer --channel tango-controls)
             echo $message
             echo "string_list=$message" >> $GITHUB_OUTPUT
           env:
@@ -31,6 +31,7 @@ jobs:
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
             R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
             R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
+            ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
 
         - name: Upload requested index.json
           uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -57,12 +58,13 @@ jobs:
             path: output_index
 
       - name: Get artifact info for subdir@letter and save into partial index
-        run: pixi run parselmouth updater ${{ matrix.subdirs }} --channel conda-forge --upload
+        run: pixi run parselmouth updater ${{ matrix.subdirs }} --channel tango-controls --upload
         env:
             R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
             R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
             R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
+            ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
 
       - name: Upload partial index
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -84,12 +86,13 @@ jobs:
             path: output
 
         - name: Combine all partial index and save into S3 index
-          run: pixi run parselmouth updater-merger --upload --channel conda-forge
+          run: pixi run parselmouth updater-merger --upload --channel tango-controls
           env:
             R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
             R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
             R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
             R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
+            ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
 
   update_file:
     runs-on: ubuntu-latest
@@ -112,6 +115,7 @@ jobs:
           R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
           R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
           R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
+          ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
 
       - name: Commit and push changes
         env:

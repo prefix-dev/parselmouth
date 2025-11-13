@@ -72,7 +72,6 @@ def main(
         )
         if artifact:
             sha = repodatas[package_name]["sha256"]
-
             if sha not in names_mapping:
                 mapping_entry = extract_artifact_mapping(artifact, package_name)
                 names_mapping[sha] = mapping_entry
