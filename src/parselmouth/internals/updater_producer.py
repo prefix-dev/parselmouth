@@ -55,19 +55,6 @@ def main(
     letters = set()
 
     for subdir in subdirs:
-<<<<<<< HEAD
-        repodatas = {}
-        # Get the repodata for this specific subdirectory
-        repodata = get_subdir_repodata(subdir, channel)
-        repodatas.update(repodata["packages"])
-        repodatas.update(repodata["packages.conda"])
-||||||| 18a0abc6
-        repodatas = {}
-        repodata = get_subdir_repodata(subdir, channel)
-
-        repodatas.update(repodata["packages"])
-        repodatas.update(repodata["packages.conda"])
-=======
         # repodatas = {}
         packages_with_label = get_all_packages_by_subdir(subdir, channel)
 
@@ -80,33 +67,11 @@ def main(
                         f"Package {package_name} in subdir {subdir} does not have sha256. Skipping."
                     )
                     continue
->>>>>>> main
 
-<<<<<<< HEAD
-        # Record package name and Sha256
-        for package_name in repodatas:
-            package = repodatas[package_name]
-            sha256 = package["sha256"]
-||||||| 18a0abc6
-        for package_name in repodatas:
-            package = repodatas[package_name]
-            sha256 = package["sha256"]
-=======
                 if sha256 not in existing_mapping_data.root:
                     all_packages.append(package_name)
                     letters.add(f"{subdir}@{package_name[0]}")
->>>>>>> main
 
-<<<<<<< HEAD
-            # Add the sha256 if it does not already exist
-            if sha256 not in existing_mapping_data.root:
-                all_packages.append(package_name)
-                letters.add(f"{subdir}@{package_name[0]}")
-||||||| 18a0abc6
-            if sha256 not in existing_mapping_data.root:
-                all_packages.append(package_name)
-                letters.add(f"{subdir}@{package_name[0]}")
-=======
                 elif check_if_pypi_exists:
                     # If the package already exists, we check if it has pypi_normalized_names
                     existing_entry = existing_mapping_data.root[sha256]
@@ -114,7 +79,6 @@ def main(
                     if existing_entry.pypi_normalized_names is None:
                         all_packages.append(package_name)
                         letters.add(f"{subdir}@{package_name[0]}")
->>>>>>> main
 
     # Write the index file to disk
     index_location = Path(output_dir) / channel / "index.json"

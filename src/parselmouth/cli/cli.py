@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 import typer
 
 
@@ -34,7 +34,7 @@ def updater_producer(
     check_if_exists: bool = True,
     check_if_pypi_exists: bool = False,
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
-    subdir: str | None = None,
+    subdir: Optional[str] = None,
 ):
     """
     Generate the subdir@letter list.
@@ -114,14 +114,8 @@ def update_mapping(channel: SupportedChannels = SupportedChannels.CONDA_FORGE):
 @app.command()
 def update_relations_table(
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
-    upload: Annotated[
-        bool,
-        typer.Option(help="Upload results to S3. If False, only saves locally."),
-    ] = False,
-    output_dir: Annotated[
-        str | None,
-        typer.Option(help="Directory to save files locally (optional)."),
-    ] = None,
+    upload: bool = False,
+    output_dir: Optional[str] = None,
 ):
     """
     Generate and upload the package relations table (recommended approach).
@@ -158,17 +152,9 @@ def check_one(
         str,
         typer.Argument(help="Subdir for the package name"),
     ],
-    backend: Annotated[
-        str | None,
-        typer.Option(
-            help="What backend to use for the package. Supported backends: oci, libcfgraph, streamed."
-        ),
-    ] = None,
+    backend: Optional[str] = None,
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
-    upload: Annotated[
-        bool,
-        typer.Option(help="Upload or overwrite already existing mapping."),
-    ] = False,
+    upload: bool = False,
 ):
     """
     Check mapping just for one package.
@@ -187,10 +173,7 @@ def remove(
         typer.Argument(help="Subdir for the package name"),
     ],
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
-    dry_run: Annotated[
-        bool,
-        typer.Option(help="Upload results of removal."),
-    ] = True,
+    dry_run: bool = True,
 ):
     """
     Yank and remove packages from the index and by it's hash.
