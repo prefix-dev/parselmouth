@@ -343,17 +343,18 @@ class RelationsTable:
         return result
 
 
-class PyPIPackageLookup(BaseModel):
+class PyPIPackageLookupDetailed(BaseModel):
     """
-    Lookup response for a single PyPI package.
+    Detailed lookup response for a single PyPI package.
 
-    This is what gets served at: /pypi-to-conda-v1/{channel}/{pypi_name}.json
+    This includes full version and build information for conda packages.
+    This is what gets served at: /pypi-to-conda-v1/{channel}/{pypi_name}-detailed.json
     """
 
     format_version: str = "1.0"
     channel: str
     pypi_name: PyPIName
-    versions: dict[PyPIVersion, list[CondaPackageVersion]] = Field(
+    conda_versions: dict[PyPIVersion, list[CondaPackageVersion]] = Field(
         description="Map of PyPI version to list of Conda packages (with versions and builds) that provide it"
     )
 
@@ -362,26 +363,81 @@ class PyPIPackageLookup(BaseModel):
         return self.model_dump_json(indent=None).encode("utf-8")
 
 
-def create_pypi_lookup_files(
-    table: RelationsTable,
-) -> dict[PyPIName, PyPIPackageLookup]:
+class PyPIPackageLookup(BaseModel):
     """
-    Create individual lookup files for each PyPI package.
+    Simplified lookup response for a single PyPI package.
 
+    This only includes conda package names, without version/build details.
+    This is what gets served at: /pypi-to-conda-v1/{channel}/{pypi_name}.json
+    """
+
+    format_version: str = "1.0"
+    channel: str
+    pypi_name: PyPIName
+    conda_versions: dict[PyPIVersion, list[CondaPackageName]] = Field(
+        description="Map of PyPI version to list of Conda package names that provide it"
+    )
+
+    def to_json_bytes(self) -> bytes:
+        """Serialize to JSON bytes for uploading"""
+        return self.model_dump_json(indent=None).encode("utf-8")
+
+
+def create_pypi_lookup_files_detailed(
+    table: RelationsTable,
+) -> dict[PyPIName, PyPIPackageLookupDetailed]:
+    """
+    Create detailed individual lookup files for each PyPI package.
+
+    These include full version and build information for conda packages.
     These are the files that will be served at:
-    /pypi-to-conda-v1/{channel}/{pypi_name}.json
+    /pypi-to-conda-v1/{channel}/{pypi_name}-detailed.json
 
     Returns:
-        Dict mapping pypi_name to its lookup object
+        Dict mapping pypi_name to its detailed lookup object
     """
     pypi_to_conda = table.generate_pypi_to_conda_lookups()
 
     lookups = {}
     for pypi_name, versions in pypi_to_conda.items():
+        lookup = PyPIPackageLookupDetailed(
+            channel=str(table.channel),
+            pypi_name=pypi_name,
+            conda_versions=versions,
+        )
+        lookups[pypi_name] = lookup
+
+    return lookups
+
+
+def create_pypi_lookup_files(
+    table: RelationsTable,
+) -> dict[PyPIName, PyPIPackageLookup]:
+    """
+    Create simplified individual lookup files for each PyPI package.
+
+    This version only includes conda package names (not versions/builds).
+    These are the files that will be served at:
+    /pypi-to-conda-v1/{channel}/{pypi_name}.json
+
+    Returns:
+        Dict mapping pypi_name to its simplified lookup object
+    """
+    pypi_to_conda = table.generate_pypi_to_conda_lookups()
+
+    lookups = {}
+    for pypi_name, versions in pypi_to_conda.items():
+        # Simplify: extract just the conda package names
+        simplified_versions: dict[PyPIVersion, list[CondaPackageName]] = {}
+        for pypi_version, conda_packages in versions.items():
+            # Get unique conda package names
+            conda_names = list(dict.fromkeys([pkg.name for pkg in conda_packages]))
+            simplified_versions[pypi_version] = conda_names
+
         lookup = PyPIPackageLookup(
             channel=str(table.channel),
             pypi_name=pypi_name,
-            versions=versions,
+            conda_versions=simplified_versions,
         )
         lookups[pypi_name] = lookup
 

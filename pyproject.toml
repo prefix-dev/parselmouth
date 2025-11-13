@@ -50,6 +50,9 @@ tqdm = ">=4.67.0,<5"
 [tool.pixi.feature.test.dependencies]
 pytest = "*"
 
+[tool.pixi.feature.test.pypi-dependencies]
+moto = { version = ">=5.0.0,<6", extras = ["s3"] }
+
 [tool.pixi.feature.test.tasks]
 test = "pytest tests"
 test-v1 = "python tests/test_v1_mapping.py"

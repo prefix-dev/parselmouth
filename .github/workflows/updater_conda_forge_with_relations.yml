@@ -1,10 +1,10 @@
 # name: Run updater for conda-forge that will check for conda-forge packages
 
 on:
-    schedule:
-      # run the job every 10 minutes
-      - cron:  '*/10 * * * *'
-    workflow_dispatch:
+  schedule:
+    # run the job every 10 minutes
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}
@@ -13,52 +13,50 @@ jobs:
   generate_hash_letters:
     runs-on: ubuntu-latest
     outputs:
-        string_list: ${{ steps.generate.outputs.string_list }}
+      string_list: ${{ steps.generate.outputs.string_list }}
     steps:
-        - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-        - name: Set up Python
-          uses: actions/setup-python@v5
-          with:
-            python-version: '3.9'  # Specify your Python version
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9" # Specify your Python version
 
-        - uses: prefix-dev/setup-pixi@v0.5.1
-          with:
-            pixi-version: "latest"
-            manifest-path: pyproject.toml
+      - uses: prefix-dev/setup-pixi@v0.5.1
+        with:
+          pixi-version: "latest"
+          manifest-path: pyproject.toml
 
+      - name: pixi install
+        run: |
+          pixi install
 
-        - name: pixi install
-          run: |
-           pixi install
+      - name: Generate combination of missing subdirs and letters
+        id: generate
+        run: |
+          # Run your script here to produce a list of missing subdirs and letters
+          # example: linux-64@p linux-64@d
+          message=$(pixi run parselmouth updater-producer --channel conda-forge)
+          echo $message
+          echo "string_list=$message" >> $GITHUB_OUTPUT
+        env:
+          R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
+          R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
+          R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
+          R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
 
-        - name: Generate combination of missing subdirs and letters
-          id: generate
-          run: |
-            # Run your script here to produce a list of missing subdirs and letters
-            # example: linux-64@p linux-64@d
-            message=$(pixi run parselmouth updater-producer --channel conda-forge)
-            echo $message
-            echo "string_list=$message" >> $GITHUB_OUTPUT
-          env:
-            R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
-            R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
-            R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
-            R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
-
-        - name: Upload requested index.json
-          uses: actions/upload-artifact@v4
-          with:
-            name: index
-            path: output_index
-
+      - name: Upload requested index.json
+        uses: actions/upload-artifact@v4
+        with:
+          name: index
+          path: output_index
 
   updater_of_records:
     runs-on: ubuntu-latest
     needs: generate_hash_letters
     strategy:
-        matrix:
-            subdirs: ${{fromJson(needs.generate_hash_letters.outputs.string_list)}}
+      matrix:
+        subdirs: ${{fromJson(needs.generate_hash_letters.outputs.string_list)}}
 
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +64,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: "3.9"
 
       - uses: prefix-dev/setup-pixi@v0.5.1
         with:
@@ -80,93 +78,93 @@ jobs:
       - name: Get partial index artifacts
         uses: actions/download-artifact@v4
         with:
-            name: index
-            path: output_index
+          name: index
+          path: output_index
 
       - name: Get artifact info for subdir@letter and save into partial index
         run: pixi run parselmouth updater ${{ matrix.subdirs }} --channel conda-forge --upload
         env:
-            R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
-            R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
-            R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
-            R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
+          R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
+          R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
+          R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
+          R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
 
       - name: Upload partial index
         uses: actions/upload-artifact@v4
         with:
-            name: partial_index_${{ matrix.subdirs }}
-            path: output
+          name: partial_index_${{ matrix.subdirs }}
+          path: output
 
   updater_of_index:
     runs-on: ubuntu-latest
     needs: updater_of_records
     steps:
-        - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-        - name: Set up Python
-          uses: actions/setup-python@v5
-          with:
-            python-version: '3.9'  # Specify your Python version
-        - uses: prefix-dev/setup-pixi@v0.5.1
-          with:
-            pixi-version: "latest"
-            manifest-path: pyproject.toml
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9" # Specify your Python version
+      - uses: prefix-dev/setup-pixi@v0.5.1
+        with:
+          pixi-version: "latest"
+          manifest-path: pyproject.toml
 
-        - name: pixi install
-          run: |
-            pixi install
+      - name: pixi install
+        run: |
+          pixi install
 
-        - name: Get partial index artifacts
-          uses: actions/download-artifact@v4
-          with:
-            merge-multiple: true
-            path: output
+      - name: Get partial index artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: output
 
-        - name: Combine all partial index and save into S3 index
-          run: pixi run parselmouth updater-merger --upload --channel conda-forge
-          env:
-            R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
-            R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
-            R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
-            R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
+      - name: Combine all partial index and save into S3 index
+        run: pixi run parselmouth updater-merger --upload --channel conda-forge
+        env:
+          R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
+          R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
+          R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
+          R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
 
   # ===== NEW JOB: Generate Relations Table (v1) =====
   update_relations_table:
     runs-on: ubuntu-latest
-    needs: updater_of_index  # Run AFTER index is merged
+    needs: updater_of_index # Run AFTER index is merged
     steps:
-        - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-        - name: Set up Python
-          uses: actions/setup-python@v5
-          with:
-            python-version: '3.9'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
 
-        - uses: prefix-dev/setup-pixi@v0.5.1
-          with:
-            pixi-version: "latest"
-            manifest-path: pyproject.toml
+      - uses: prefix-dev/setup-pixi@v0.5.1
+        with:
+          pixi-version: "latest"
+          manifest-path: pyproject.toml
 
-        - name: pixi install
-          run: |
-            pixi install
+      - name: pixi install
+        run: |
+          pixi install
 
-        - name: Generate and upload relations table
-          run: |
-            echo "Generating relations table from updated index..."
-            pixi run parselmouth update-relations-table --upload --channel conda-forge
-          env:
-            R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
-            R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
-            R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
-            R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
+      - name: Generate and upload relations table
+        run: |
+          echo "Generating relations table from updated index..."
+          pixi run parselmouth update-relations-table --upload --channel conda-forge
+        env:
+          R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
+          R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
+          R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
+          R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
   # ================================================
 
   update_file:
     runs-on: ubuntu-latest
     permissions:
-      content: write  # To push on main branch
-    needs: [updater_of_index, update_relations_table]  # Wait for BOTH v0 and v1
+      content: "write-all" # To push on main branch
+    needs: [updater_of_index, update_relations_table] # Wait for BOTH v0 and v1
 
     steps:
       - name: Checkout code
@@ -175,7 +173,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: "3.9"
 
       - uses: prefix-dev/setup-pixi@v0.5.1
         with:

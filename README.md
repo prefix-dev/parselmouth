@@ -68,6 +68,93 @@ There are currently two mappings that are online, one of which is work in progre
    E.g for `requests` we can use `https://conda-mapping.prefix.dev/pypi-to-conda-v0/conda-forge/requests.json`, which will give you the corresponding json.
    There is
 
+## Infrastructure and Storage Architecture
+
+### Storage Locations
+
+Parselmouth uses two primary storage locations:
+
+#### 1. R2 Bucket (Cloud Storage)
+The main package mapping data is stored in Cloudflare R2 (S3-compatible storage), configured via the `R2_PREFIX_BUCKET` environment variable. The bucket contains:
+
+**Hash-based Mappings (v0):**
+- `hash-v0/{channel}/index.json` - Channel-specific index containing all package hashes
+- `hash-v0/{package_sha256}` - Individual mapping entries keyed by conda package SHA256 hash
+
+**Relations Tables (v1):**
+- `relations-v1/{channel}/relations.jsonl.gz` - Master relations table (JSONL format, gzipped)
+- `relations-v1/{channel}/metadata.json` - Metadata about the relations table
+- `pypi-to-conda-v1/{channel}/{pypi_name}.json` - Fast PyPI lookup files derived from relations table
+
+#### 2. Git Repository Files
+The `files/` directory in the repository stores compressed mappings that are committed to version control:
+
+- `files/mapping_as_grayskull.json` - Legacy mapping format for Grayskull compatibility
+- `files/compressed_mapping.json` - Compressed mapping (legacy format)
+- `files/v0/{channel}/compressed_mapping.json` - Channel-specific compressed mappings (conda-forge, pytorch, bioconda)
+
+### Version System
+
+Parselmouth uses a versioned approach to support multiple data formats:
+
+**v0 (Current Hash-based System):**
+- Uses conda package SHA256 hashes as keys
+- Direct lookup: `hash-v0/{sha256}` returns a single mapping entry
+- Optimized for conda → PyPI lookups
+- Both old and new workflows write to this path
+
+**v1 (Relations System - New):**
+- Stores package relationships in a normalized table format
+- Enables PyPI → conda lookups and dependency analysis
+- Three-tier structure:
+  1. Master relations table (source of truth)
+  2. Metadata (statistics, generation timestamp)
+  3. Derived lookup files (cached for performance)
+- Only new workflows with `update_relations_table` job write to this path
+
+### Workflow Pipeline Architecture
+
+The GitHub Actions workflows are organized into stages:
+
+1. **Producer Stage** (`generate_hash_letters`):
+   - Identifies missing packages by comparing upstream channel repodata with existing index
+   - Outputs a matrix of `subdir@letter` combinations to process in parallel
+
+2. **Updater Stage** (`updater_of_records`):
+   - Runs in parallel for each `subdir@letter` combination
+   - Downloads artifact metadata and extracts PyPI mappings
+   - Uploads individual package mappings to `hash-v0/{sha256}`
+
+3. **Merger Stage** (`updater_of_index`):
+   - Combines all partial indices into a master index
+   - Uploads consolidated index to `hash-v0/{channel}/index.json`
+
+4. **Relations Generation Stage** (`update_relations_table`) - **NEW**:
+   - Runs after the merger stage completes
+   - Reads the updated index and generates relations table
+   - Uploads to `relations-v1/{channel}/` paths
+   - Only present in new workflows with relations support
+
+5. **Commit Stage** (`update_file`):
+   - Updates local git repository files
+   - Runs mapping transformations (`update-mapping-legacy`, `update-mapping`)
+   - Commits compressed mappings to version control
+
+### Bucket Isolation and Safety
+
+The new workflows with relations support **do NOT overwrite or interfere with old data**:
+
+- **Same bucket, different prefixes**: Both old and new workflows use `R2_PREFIX_BUCKET`, but write to isolated path prefixes
+- **v0 paths**: Both systems continue to write hash-based mappings (backward compatible)
+- **v1 paths**: Only new workflows write relations data (additive, no conflicts)
+- **No destructive operations**: New workflows add functionality without removing or replacing existing data
+
+This architecture allows for:
+- Zero-downtime deployment of relations features
+- Gradual migration from v0 to v1 APIs
+- Rollback capability if issues arise
+- Parallel operation of both systems during transition
+
 ## Thanks!
 
 Developed with ❤️ at [prefix.dev](https://prefix.dev).

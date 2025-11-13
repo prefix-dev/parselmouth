@@ -10,6 +10,7 @@ from parselmouth.internals.legacy_mapping import main as legacy_mapping_main
 from parselmouth.internals.mapping_transformer import main as mapping_transformer_main
 from parselmouth.internals.relations_updater import main as relations_updater_main
 from parselmouth.internals.remover import main as remover_main
+from parselmouth.internals.package_explorer import explore_package
 
 from parselmouth.internals.channels import SupportedChannels
 
@@ -116,6 +117,7 @@ def update_relations_table(
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
     upload: bool = False,
     output_dir: Optional[str] = None,
+    skip_unchanged: bool = True,
 ):
     """
     Generate and upload the package relations table (recommended approach).
@@ -127,17 +129,23 @@ def update_relations_table(
     The table-based approach is the single source of truth for package mappings.
     Both Conda->PyPI and PyPI->Conda lookups are derived from this table.
 
+    By default, uses incremental mode (--skip-unchanged) to only upload changed lookup files.
+    Use --no-skip-unchanged to force upload all files (slower but ensures consistency).
+
     Examples:
         # Generate and save locally
         parselmouth update-relations-table --output-dir ./output
 
-        # Generate and upload to S3 (CI/production)
+        # Generate and upload to S3 (CI/production) - incremental mode
         parselmouth update-relations-table --upload
+
+        # Force upload all files (full mode)
+        parselmouth update-relations-table --upload --no-skip-unchanged
 
         # Both save locally and upload
         parselmouth update-relations-table --upload --output-dir ./output
     """
-    relations_updater_main(channel=channel, upload=upload, output_dir=output_dir)
+    relations_updater_main(channel=channel, upload=upload, output_dir=output_dir, skip_unchanged=skip_unchanged)
 
 
 @app.command()
@@ -184,3 +192,29 @@ def remove(
         channel=channel,
         dry_run=dry_run,
     )
+
+
+@app.command()
+def explore(
+    channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+):
+    """
+    Interactive Conda -> PyPI package explorer with rich interface.
+
+    This provides an interactive way to explore conda packages and discover
+    their corresponding PyPI mappings:
+
+    1. Select platform/subdir (linux-64, osx-arm64, etc.)
+    2. Search for conda packages (with suggestions)
+    3. Browse versions (with pagination and direct input)
+    4. View build details in a table
+    5. View PyPI mapping:
+       - Aggregated across all builds (default)
+       - For a specific build
+       - Or skip
+
+    Note: This explores the Conda -> PyPI direction. A PyPI -> Conda explorer
+    will be available in the future.
+    """
+
+    explore_package(channel=channel)

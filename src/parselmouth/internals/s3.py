@@ -69,33 +69,44 @@ class S3:
     It's used to upload the index mapping and the mapping between PyPI and Conda and vice versa.
     """
 
-    def __init__(self) -> None:
-        loaded = load_dotenv()
-        if not loaded:
-            logging.warning(
-                "no .env file was loaded. S3 requests may fail until R2_PREFIX_* keys are set."
+    def __init__(self, client=None, bucket_name: Optional[str] = None) -> None:
+        """
+        Initialize S3 client.
+
+        Args:
+            client: Optional boto3 S3 client to use (for testing with moto)
+            bucket_name: Optional bucket name override
+        """
+        if client is not None:
+            # Use provided client (for testing)
+            self._s3_client = client
+            self.bucket_name = bucket_name or os.getenv("R2_PREFIX_BUCKET", "conda")
+        else:
+            # Create production client
+            loaded = load_dotenv()
+            if not loaded:
+                logging.warning(
+                    "no .env file was loaded. S3 requests may fail until R2_PREFIX_* keys are set."
+                )
+
+            account_id = os.getenv("R2_PREFIX_ACCOUNT_ID", "default")
+            access_key_id = os.getenv("R2_PREFIX_ACCESS_KEY_ID", "")
+            access_key_secret = os.getenv("R2_PREFIX_SECRET_ACCESS_KEY", "")
+            self.bucket_name = bucket_name or os.getenv("R2_PREFIX_BUCKET", "conda")
+
+            boto_config = Config(
+                max_pool_connections=50,
             )
 
-        account_id = os.getenv("R2_PREFIX_ACCOUNT_ID", "default")
-        access_key_id = os.getenv("R2_PREFIX_ACCESS_KEY_ID", "")
-        access_key_secret = os.getenv("R2_PREFIX_SECRET_ACCESS_KEY", "")
-        bucket_name = os.getenv("R2_PREFIX_BUCKET", "conda")
-
-        self.bucket_name = bucket_name
-
-        boto_config = Config(
-            max_pool_connections=50,
-        )
-
-        s3_client = boto3.client(
-            service_name="s3",
-            endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
-            aws_access_key_id=f"{access_key_id}",
-            aws_secret_access_key=f"{access_key_secret}",
-            region_name="eeur",  # Must be one of: wnam, enam, weur, eeur, apac, auto
-            config=boto_config,
-        )
-        self._s3_client = s3_client
+            s3_client = boto3.client(
+                service_name="s3",
+                endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
+                aws_access_key_id=f"{access_key_id}",
+                aws_secret_access_key=f"{access_key_secret}",
+                region_name="eeur",  # Must be one of: wnam, enam, weur, eeur, apac, auto
+                config=boto_config,
+            )
+            self._s3_client = s3_client
 
     def get_channel_index(self, channel: SupportedChannels) -> Optional[IndexMapping]:
         """
@@ -168,7 +179,8 @@ class S3:
         key = f"relations-{RELATIONS_VERSION}/{channel}/{RELATIONS_METADATA_FILE}"
         logging.info(f"Uploading relations metadata to {key}")
 
-        output = json.dumps(metadata, indent=2)
+        # Use json.dumps with default handler for datetime objects
+        output = json.dumps(metadata, indent=2, default=str)
         self._s3_client.upload_fileobj(
             io.BytesIO(output.encode("utf-8")),
             self.bucket_name,
@@ -194,6 +206,53 @@ class S3:
             self.bucket_name,
             key,
         )
+
+    def get_pypi_lookup_file(
+        self,
+        pypi_name: PyPIName,
+        channel: SupportedChannels,
+    ) -> Optional[bytes]:
+        """
+        Download a single PyPI -> Conda lookup file.
+
+        Returns:
+            The JSON data as bytes, or None if not found
+        """
+        key = f"{PYPI_TO_CONDA}-{RELATIONS_VERSION}/{channel}/{pypi_name}.json"
+
+        try:
+            response = self._s3_client.get_object(
+                Bucket=self.bucket_name,
+                Key=key,
+            )
+            return response["Body"].read()
+        except self._s3_client.exceptions.NoSuchKey:
+            return None
+
+    def pypi_lookup_exists(
+        self,
+        pypi_name: PyPIName,
+        channel: SupportedChannels,
+    ) -> bool:
+        """
+        Check if a PyPI lookup file exists in S3.
+
+        Returns:
+            True if the file exists, False otherwise
+        """
+        key = f"{PYPI_TO_CONDA}-{RELATIONS_VERSION}/{channel}/{pypi_name}.json"
+
+        try:
+            self._s3_client.head_object(
+                Bucket=self.bucket_name,
+                Key=key,
+            )
+            return True
+        except self._s3_client.exceptions.NoSuchKey:
+            return False
+        except Exception:
+            # For other errors, assume it doesn't exist
+            return False
 
     def get_relations_table(
         self,
