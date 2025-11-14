@@ -34,20 +34,22 @@ def main(
         # Original workflow for other channels
         subdirs = get_all_archs_available(channel)
 
-    # filter out the subdir we want to update
+    # filter out the subdir which want to update
     if subdir and subdir in subdirs:
         subdirs = [subdir]
     elif subdir and subdir not in subdirs:
         raise ValueError(f"Subdir {subdir} not found in channel {channel}")
 
+    # List of all packages
     all_packages: list[tuple[str, str]] = []
 
     if check_if_exists:
+        # Get the complete channel indexes
         existing_mapping_data = s3_client.get_channel_index(channel=channel)
         if not existing_mapping_data:
+            # a new channel may not have any mapping data. so we need to create an empty one
             existing_mapping_data = IndexMapping(root={})
     else:
-        # a new channel may not have any mapping data. so we need to create an empty one
         existing_mapping_data = IndexMapping(root={})
 
     letters = set()
@@ -78,12 +80,12 @@ def main(
                         all_packages.append(package_name)
                         letters.add(f"{subdir}@{package_name[0]}")
 
+    # Write the index file to disk
     index_location = Path(output_dir) / channel / "index.json"
     os.makedirs(index_location.parent, exist_ok=True)
-
     with open(index_location, mode="w") as mapping_file:
         json.dump(existing_mapping_data.model_dump(), mapping_file)
 
+    # Print the processed packages
     json_letters = json.dumps(list(letters))
-
     print(json_letters)

@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 import typer
 
 
@@ -8,7 +8,9 @@ from parselmouth.internals.check_one import main as check_one_main
 from parselmouth.internals.updater_merger import main as update_merger_main
 from parselmouth.internals.legacy_mapping import main as legacy_mapping_main
 from parselmouth.internals.mapping_transformer import main as mapping_transformer_main
+from parselmouth.internals.relations_updater import main as relations_updater_main
 from parselmouth.internals.remover import main as remover_main
+from parselmouth.internals.package_explorer import explore_package
 
 from parselmouth.internals.channels import SupportedChannels
 
@@ -33,7 +35,7 @@ def updater_producer(
     check_if_exists: bool = True,
     check_if_pypi_exists: bool = False,
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
-    subdir: str | None = None,
+    subdir: Optional[str] = None,
 ):
     """
     Generate the subdir@letter list.
@@ -111,6 +113,53 @@ def update_mapping(channel: SupportedChannels = SupportedChannels.CONDA_FORGE):
 
 
 @app.command()
+def update_v1_mappings(
+    channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+    upload: bool = False,
+    output_dir: Optional[str] = None,
+    skip_unchanged: bool = True,
+    public_url: bool = False,
+):
+    """
+    Generate and upload v1 mappings (relations table + PyPI lookup files).
+
+    This creates:
+    - Master relations table (JSONL) at /relations-v1/{channel}/relations.jsonl.gz
+    - Relations metadata at /relations-v1/{channel}/metadata.json
+    - PyPI -> Conda lookup files at /pypi-to-conda-v1/{channel}/{pypi_name}.json
+
+    The v1 format is table-based and serves as the single source of truth.
+    Both Conda->PyPI and PyPI->Conda lookups are derived from this table.
+
+    By default, uses incremental mode (--skip-unchanged) to only upload changed lookup files.
+    Use --no-skip-unchanged to force upload all files (slower but ensures consistency).
+
+    Use --public-url to download index from public HTTPS URL (no R2 credentials needed).
+    This is useful for local testing without R2 access.
+
+    Examples:
+        # Generate and save locally (no credentials needed)
+        parselmouth update-v1-mappings --output-dir ./output --public-url
+
+        # Generate and upload to S3 (CI/production) - incremental mode
+        parselmouth update-v1-mappings --upload --channel conda-forge
+
+        # Force upload all files (full mode)
+        parselmouth update-v1-mappings --upload --no-skip-unchanged
+
+        # Both save locally and upload
+        parselmouth update-v1-mappings --upload --output-dir ./output
+    """
+    relations_updater_main(
+        channel=channel,
+        upload=upload,
+        output_dir=output_dir,
+        skip_unchanged=skip_unchanged,
+        public_url=public_url,
+    )
+
+
+@app.command()
 def check_one(
     package_name: Annotated[
         str,
@@ -122,17 +171,9 @@ def check_one(
         str,
         typer.Argument(help="Subdir for the package name"),
     ],
-    backend: Annotated[
-        str | None,
-        typer.Option(
-            help="What backend to use for the package. Supported backends: oci, libcfgraph, streamed."
-        ),
-    ] = None,
+    backend: Optional[str] = None,
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
-    upload: Annotated[
-        bool,
-        typer.Option(help="Upload or overwrite already existing mapping."),
-    ] = False,
+    upload: bool = False,
 ):
     """
     Check mapping just for one package.
@@ -151,10 +192,7 @@ def remove(
         typer.Argument(help="Subdir for the package name"),
     ],
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
-    dry_run: Annotated[
-        bool,
-        typer.Option(help="Upload results of removal."),
-    ] = True,
+    dry_run: bool = True,
 ):
     """
     Yank and remove packages from the index and by it's hash.
@@ -165,3 +203,29 @@ def remove(
         channel=channel,
         dry_run=dry_run,
     )
+
+
+@app.command()
+def explore(
+    channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+):
+    """
+    Interactive Conda -> PyPI package explorer with rich interface.
+
+    This provides an interactive way to explore conda packages and discover
+    their corresponding PyPI mappings:
+
+    1. Select platform/subdir (linux-64, osx-arm64, etc.)
+    2. Search for conda packages (with suggestions)
+    3. Browse versions (with pagination and direct input)
+    4. View build details in a table
+    5. View PyPI mapping:
+       - Aggregated across all builds (default)
+       - For a specific build
+       - Or skip
+
+    Note: This explores the Conda -> PyPI direction. A PyPI -> Conda explorer
+    will be available in the future.
+    """
+
+    explore_package(channel=channel)
