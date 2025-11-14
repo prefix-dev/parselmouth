@@ -329,7 +329,9 @@ def explore_package(
             )
 
         # Aggregate the data
-        aggregated_pypi_packages: dict[str, dict[str, list[str]]] = {}  # {pypi_name: {version: [build_names]}}
+        aggregated_pypi_packages: dict[
+            str, dict[str, list[str]]
+        ] = {}  # {pypi_name: {version: [build_names]}}
         aggregated_direct_urls: dict[str, list[str]] = {}  # {url: [build_names]}
         conda_package_name = None
 

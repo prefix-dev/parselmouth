@@ -343,7 +343,9 @@ def generate_and_upload_pypi_lookups(
                     for pypi_name in stale_files
                 }
 
-                with tqdm(total=len(delete_futures), desc="Deleting stale lookups") as pbar:
+                with tqdm(
+                    total=len(delete_futures), desc="Deleting stale lookups"
+                ) as pbar:
                     for future in as_completed(delete_futures):  # type: ignore[assignment]
                         future.result()
                         pbar.update(1)
