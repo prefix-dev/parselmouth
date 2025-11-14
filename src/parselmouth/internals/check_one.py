@@ -52,12 +52,12 @@ def main(
 
     found_sha = None
     repodata_by_label = None
-    for label in repodatas:
-        repodata_by_label = repodatas[label]
-        for repodata_package_name in repodata_by_label:
-            if repodata_package_name == package_name:
-                found_sha = repodata_by_label[package_name]["sha256"]
-                break
+    for label, packages in repodatas.items():
+        if package_name in packages:
+            repodata_by_label = packages
+            found_sha = packages[package_name]["sha256"]
+            break
+
     if not found_sha or not repodata_by_label:
         raise ValueError(
             f"Could not find the package {package_name} in the repodata for subdir {subdir}"

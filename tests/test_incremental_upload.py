@@ -49,7 +49,7 @@ def test_hash_difference():
 
 def test_empty_data_hash():
     """Test hash computation with empty data."""
-    empty_data = b''
+    empty_data = b""
     hash_result = _compute_file_hash(empty_data)
 
     expected = hashlib.sha256(empty_data).hexdigest()
@@ -58,7 +58,7 @@ def test_empty_data_hash():
 
 def test_large_data_hash():
     """Test hash computation with larger data."""
-    large_data = b'x' * 10000
+    large_data = b"x" * 10000
     hash_result = _compute_file_hash(large_data)
 
     expected = hashlib.sha256(large_data).hexdigest()
@@ -66,10 +66,7 @@ def test_large_data_hash():
     assert len(hash_result) == 64
 
 
-@pytest.mark.skipif(
-    True,
-    reason="Requires S3 credentials - skipped in unit tests"
-)
+@pytest.mark.skipif(True, reason="Requires S3 credentials - skipped in unit tests")
 def test_check_file_needs_update_with_s3():
     """
     Test _check_file_needs_update with actual S3 interaction.
@@ -79,9 +76,7 @@ def test_check_file_needs_update_with_s3():
     """
     test_data = b'{"test": "data"}'
     result = _check_file_needs_update(
-        "test-package",
-        test_data,
-        SupportedChannels.CONDA_FORGE
+        "test-package", test_data, SupportedChannels.CONDA_FORGE
     )
 
     # Should return True for non-existent file

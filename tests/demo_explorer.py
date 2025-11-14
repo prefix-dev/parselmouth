@@ -14,6 +14,7 @@ from rich.table import Table
 
 console = Console()
 
+
 def demo_package_data():
     """
     Demonstrate fetching and displaying Conda -> PyPI package data.
@@ -37,7 +38,8 @@ def demo_package_data():
     # Step 2: Find a specific package (e.g., requests)
     package_name = "requests"
     matching = {
-        name: info for name, info in all_packages.items()
+        name: info
+        for name, info in all_packages.items()
         if name.startswith(package_name + "-")
     }
 
@@ -46,7 +48,7 @@ def demo_package_data():
     # Step 3: Group by version
     versions = {}
     for full_name in matching.keys():
-        parts = full_name.rsplit('-', 2)
+        parts = full_name.rsplit("-", 2)
         if len(parts) >= 3:
             version = parts[1]
             if version not in versions:
@@ -59,7 +61,9 @@ def demo_package_data():
         sample_version = sorted(versions.keys(), reverse=True)[0]
         builds = versions[sample_version]
 
-        console.print(f"[yellow]Showing builds for version {sample_version}:[/yellow]\n")
+        console.print(
+            f"[yellow]Showing builds for version {sample_version}:[/yellow]\n"
+        )
 
         table = Table(title=f"{package_name}-{sample_version} Builds", show_header=True)
         table.add_column("#", style="dim", width=4)
@@ -69,7 +73,7 @@ def demo_package_data():
 
         for idx, build_name in enumerate(sorted(builds)[:10], 1):  # Show first 10
             info = matching[build_name]
-            size = info.get('size', 'N/A')
+            size = info.get("size", "N/A")
             if isinstance(size, int):
                 if size > 1024 * 1024:
                     size_str = f"{size / (1024 * 1024):.1f} MB"
@@ -80,18 +84,17 @@ def demo_package_data():
             else:
                 size_str = str(size)
 
-            parts = build_name.rsplit('-', 2)
+            parts = build_name.rsplit("-", 2)
             build_string = parts[2] if len(parts) >= 3 else "unknown"
 
-            table.add_row(
-                str(idx),
-                build_string,
-                build_name,
-                size_str
-            )
+            table.add_row(str(idx), build_string, build_name, size_str)
 
         console.print(table)
-        console.print(f"\n[dim]... and {len(builds) - 10} more builds[/dim]" if len(builds) > 10 else "")
+        console.print(
+            f"\n[dim]... and {len(builds) - 10} more builds[/dim]"
+            if len(builds) > 10
+            else ""
+        )
 
     console.print("\n[green]✓[/green] Demo complete!\n")
     console.print("[cyan]To use the interactive explorer, run:[/cyan]")

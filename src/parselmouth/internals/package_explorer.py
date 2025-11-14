@@ -6,16 +6,23 @@ their corresponding PyPI mappings.
 """
 
 import logging
-from typing import Optional
 
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
-from rich import print as rprint
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+)
 
 from parselmouth.internals.channels import SupportedChannels
-from parselmouth.internals.conda_forge import get_all_packages_by_subdir, get_artifact_info
+from parselmouth.internals.conda_forge import (
+    get_all_packages_by_subdir,
+    get_artifact_info,
+)
 from parselmouth.internals.artifact import extract_artifact_mapping
 
 
@@ -53,10 +60,7 @@ def explore_package(
     console.print("[yellow]Step 1: Select Platform/Subdir[/yellow]")
     console.print("Common options: linux-64, osx-64, osx-arm64, win-64, noarch")
 
-    subdir = Prompt.ask(
-        "Enter subdir",
-        default="linux-64"
-    )
+    subdir = Prompt.ask("Enter subdir", default="linux-64")
 
     console.print(f"\n[green]✓[/green] Using subdir: {subdir}")
 
@@ -77,7 +81,8 @@ def explore_package(
 
     # Find matching packages
     matching_packages = {
-        name: info for name, info in all_packages.items()
+        name: info
+        for name, info in all_packages.items()
         if package_name_input.lower() in name.lower()
     }
 
@@ -92,7 +97,9 @@ def explore_package(
         return
 
     if len(matching_packages) > 100:
-        console.print(f"[yellow]⚠[/yellow] Found {len(matching_packages)} matching packages. Showing first 100.")
+        console.print(
+            f"[yellow]⚠[/yellow] Found {len(matching_packages)} matching packages. Showing first 100."
+        )
         console.print("[dim]Be more specific to narrow down results.[/dim]\n")
         matching_packages = dict(list(matching_packages.items())[:100])
 
@@ -101,7 +108,7 @@ def explore_package(
     for full_name in matching_packages.keys():
         # Extract base name by removing version suffix
         # e.g., "numpy-1.26.4-py311_0" -> "numpy"
-        parts = full_name.rsplit('-', 2)
+        parts = full_name.rsplit("-", 2)
         if len(parts) >= 3:
             base_name = parts[0]
             if base_name not in base_packages:
@@ -109,7 +116,7 @@ def explore_package(
             base_packages[base_name].append(full_name)
 
     if len(base_packages) > 1:
-        console.print(f"\n[cyan]Found multiple packages:[/cyan]")
+        console.print("\n[cyan]Found multiple packages:[/cyan]")
         base_list = sorted(base_packages.keys())
         for idx, base in enumerate(base_list, 1):
             console.print(f"  {idx}. {base} ({len(base_packages[base])} versions)")
@@ -117,7 +124,7 @@ def explore_package(
         choice = Prompt.ask(
             "\nSelect package number",
             choices=[str(i) for i in range(1, len(base_list) + 1)],
-            default="1"
+            default="1",
         )
         selected_base = base_list[int(choice) - 1]
     else:
@@ -134,7 +141,7 @@ def explore_package(
     versions = {}
     version_sizes = {}
     for full_name in package_versions:
-        parts = full_name.rsplit('-', 2)
+        parts = full_name.rsplit("-", 2)
         if len(parts) >= 3:
             version = parts[1]
             if version not in versions:
@@ -143,7 +150,7 @@ def explore_package(
             versions[version].append(full_name)
 
             # Add up the size for this build
-            size = matching_packages[full_name].get('size', 0)
+            size = matching_packages[full_name].get("size", 0)
             if isinstance(size, int):
                 version_sizes[version] += size
 
@@ -158,12 +165,16 @@ def explore_package(
         end_idx = start_idx + page_size
         page_versions = sorted_versions[start_idx:end_idx]
 
-        console.print(f"\n[cyan]Available versions (page {current_page + 1}, showing latest first):[/cyan]")
+        console.print(
+            f"\n[cyan]Available versions (page {current_page + 1}, showing latest first):[/cyan]"
+        )
         for idx, version in enumerate(page_versions, 1):
             build_count = len(versions[version])
             total_size = version_sizes[version]
             size_str = format_size(total_size) if total_size > 0 else "N/A"
-            console.print(f"  {idx}. {version} ({build_count} build{'s' if build_count > 1 else ''}, {size_str})")
+            console.print(
+                f"  {idx}. {version} ({build_count} build{'s' if build_count > 1 else ''}, {size_str})"
+            )
 
         remaining = len(sorted_versions) - end_idx
         if remaining > 0:
@@ -181,10 +192,10 @@ def explore_package(
         version_choice = Prompt.ask("\nEnter your choice")
 
         # Check if user wants more versions
-        if version_choice.lower() == 'more' and remaining > 0:
+        if version_choice.lower() == "more" and remaining > 0:
             current_page += 1
             continue
-        elif version_choice.lower() == 'back' and current_page > 0:
+        elif version_choice.lower() == "back" and current_page > 0:
             current_page -= 1
             continue
 
@@ -195,7 +206,9 @@ def explore_package(
                 selected_version = page_versions[choice_num - 1]
                 break
             else:
-                console.print(f"[red]Invalid choice. Please enter 1-{len(page_versions)}[/red]")
+                console.print(
+                    f"[red]Invalid choice. Please enter 1-{len(page_versions)}[/red]"
+                )
                 continue
 
         # Check if it's a direct version string
@@ -203,7 +216,9 @@ def explore_package(
             selected_version = version_choice
             break
 
-        console.print(f"[red]Version '{version_choice}' not found. Please try again.[/red]")
+        console.print(
+            f"[red]Version '{version_choice}' not found. Please try again.[/red]"
+        )
 
     console.print(f"\n[green]✓[/green] Selected version: {selected_version}")
 
@@ -222,30 +237,27 @@ def explore_package(
 
     for idx, build_name in enumerate(sorted(builds), 1):
         info = matching_packages[build_name]
-        size = info.get('size', 'N/A')
+        size = info.get("size", "N/A")
         if isinstance(size, int):
             size_str = format_size(size)
         else:
             size_str = str(size)
 
-        timestamp = info.get('timestamp', 'N/A')
+        timestamp = info.get("timestamp", "N/A")
         if isinstance(timestamp, int):
             from datetime import datetime
-            timestamp_str = datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
+
+            timestamp_str = datetime.fromtimestamp(timestamp / 1000).strftime(
+                "%Y-%m-%d"
+            )
         else:
             timestamp_str = str(timestamp)
 
         # Extract build string
-        parts = build_name.rsplit('-', 2)
+        parts = build_name.rsplit("-", 2)
         build_string = parts[2] if len(parts) >= 3 else "unknown"
 
-        table.add_row(
-            str(idx),
-            build_string,
-            build_name,
-            size_str,
-            timestamp_str
-        )
+        table.add_row(str(idx), build_string, build_name, size_str, timestamp_str)
 
     console.print(table)
 
@@ -256,10 +268,7 @@ def explore_package(
     console.print("  - Type a build number to see mapping for specific build")
     console.print("  - Type 'n' to skip")
 
-    mapping_choice = Prompt.ask(
-        "\nYour choice",
-        default="all"
-    )
+    mapping_choice = Prompt.ask("\nYour choice", default="all")
 
     if mapping_choice.lower() == "n":
         console.print("\n[dim]Skipping PyPI mapping view[/dim]")
@@ -270,7 +279,9 @@ def explore_package(
 
     if mapping_choice.lower() == "all":
         # Aggregate mappings across all builds
-        console.print(f"\n[cyan]Fetching PyPI mappings for all {len(builds)} builds...[/cyan]\n")
+        console.print(
+            f"\n[cyan]Fetching PyPI mappings for all {len(builds)} builds...[/cyan]\n"
+        )
 
         all_mappings = []
         failed_builds = []
@@ -280,7 +291,7 @@ def explore_package(
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TaskProgressColumn(),
-            console=console
+            console=console,
         ) as progress:
             task = progress.add_task("[green]Fetching artifacts...", total=len(builds))
 
@@ -292,7 +303,7 @@ def explore_package(
                             subdir=subdir,
                             artifact=build_name,
                             backend=backend,
-                            channel=channel
+                            channel=channel,
                         )
                         if artifact:
                             break
@@ -308,10 +319,14 @@ def explore_package(
 
                 progress.advance(task)
 
-        console.print(f"\n[green]✓[/green] Successfully fetched {len(all_mappings)}/{len(builds)} builds")
+        console.print(
+            f"\n[green]✓[/green] Successfully fetched {len(all_mappings)}/{len(builds)} builds"
+        )
 
         if failed_builds:
-            console.print(f"[yellow]⚠[/yellow] Failed to fetch {len(failed_builds)} builds")
+            console.print(
+                f"[yellow]⚠[/yellow] Failed to fetch {len(failed_builds)} builds"
+            )
 
         # Aggregate the data
         aggregated_pypi_packages = {}  # {pypi_name: {version: [build_names]}}
@@ -332,30 +347,38 @@ def explore_package(
                         if version not in aggregated_pypi_packages[pypi_name]:
                             aggregated_pypi_packages[pypi_name][version] = []
                         # Extract just the build string
-                        parts = build_name.rsplit('-', 2)
+                        parts = build_name.rsplit("-", 2)
                         build_string = parts[2] if len(parts) >= 3 else build_name
-                        aggregated_pypi_packages[pypi_name][version].append(build_string)
+                        aggregated_pypi_packages[pypi_name][version].append(
+                            build_string
+                        )
 
             if mapping.direct_url:
                 for url in mapping.direct_url:
                     if url not in aggregated_direct_urls:
                         aggregated_direct_urls[url] = []
-                    parts = build_name.rsplit('-', 2)
+                    parts = build_name.rsplit("-", 2)
                     build_string = parts[2] if len(parts) >= 3 else build_name
                     aggregated_direct_urls[url].append(build_string)
 
         # Display aggregated results
-        console.print(f"\n[bold cyan]📦 Aggregated PyPI Mapping for {selected_base}-{selected_version}:[/bold cyan]\n")
+        console.print(
+            f"\n[bold cyan]📦 Aggregated PyPI Mapping for {selected_base}-{selected_version}:[/bold cyan]\n"
+        )
 
         # Overview
-        overview_table = Table(title="Overview", show_header=True, header_style="bold magenta")
+        overview_table = Table(
+            title="Overview", show_header=True, header_style="bold magenta"
+        )
         overview_table.add_column("Field", style="cyan", width=20)
         overview_table.add_column("Value", style="white")
 
         overview_table.add_row("Conda Package", conda_package_name or "Unknown")
         overview_table.add_row("Version", selected_version)
         overview_table.add_row("Total Builds", str(len(builds)))
-        overview_table.add_row("PyPI Packages Found", str(len(aggregated_pypi_packages)))
+        overview_table.add_row(
+            "PyPI Packages Found", str(len(aggregated_pypi_packages))
+        )
 
         console.print(overview_table)
 
@@ -365,7 +388,7 @@ def explore_package(
             mapping_table = Table(
                 title="PyPI Package Mappings",
                 show_header=True,
-                header_style="bold magenta"
+                header_style="bold magenta",
             )
             mapping_table.add_column("PyPI Package", style="cyan", no_wrap=True)
             mapping_table.add_column("Version", style="green", no_wrap=True)
@@ -392,7 +415,7 @@ def explore_package(
             url_table = Table(
                 title="Direct URLs (not on PyPI index)",
                 show_header=True,
-                header_style="bold magenta"
+                header_style="bold magenta",
             )
             url_table.add_column("URL", style="blue")
             url_table.add_column("Builds", style="cyan")
@@ -409,12 +432,18 @@ def explore_package(
 
         # Show note if no PyPI mappings found
         if not aggregated_pypi_packages and not aggregated_direct_urls:
-            console.print("\n[yellow]⚠ Note: No PyPI packages found in any of the builds[/yellow]")
+            console.print(
+                "\n[yellow]⚠ Note: No PyPI packages found in any of the builds[/yellow]"
+            )
 
     else:
         # Single build view
-        if not mapping_choice.isdigit() or not (1 <= int(mapping_choice) <= len(builds)):
-            console.print(f"[red]Invalid choice. Please select 1-{len(builds)} or 'all'[/red]")
+        if not mapping_choice.isdigit() or not (
+            1 <= int(mapping_choice) <= len(builds)
+        ):
+            console.print(
+                f"[red]Invalid choice. Please select 1-{len(builds)} or 'all'[/red]"
+            )
             return
 
         build_choice_idx = int(mapping_choice)
@@ -431,7 +460,7 @@ def explore_package(
                         subdir=subdir,
                         artifact=selected_build,
                         backend=backend,
-                        channel=channel
+                        channel=channel,
                     )
                     if artifact:
                         console.print(f"[dim]Using backend: {backend}[/dim]")
@@ -444,10 +473,14 @@ def explore_package(
             mapping_entry = extract_artifact_mapping(artifact, selected_build)
 
             # Display mapping in a rich table
-            console.print(f"\n[bold cyan]📦 PyPI Mapping for {selected_build}:[/bold cyan]\n")
+            console.print(
+                f"\n[bold cyan]📦 PyPI Mapping for {selected_build}:[/bold cyan]\n"
+            )
 
             # Create overview table
-            overview_table = Table(title="Package Overview", show_header=True, header_style="bold magenta")
+            overview_table = Table(
+                title="Package Overview", show_header=True, header_style="bold magenta"
+            )
             overview_table.add_column("Field", style="cyan", width=20)
             overview_table.add_column("Value", style="white")
 
@@ -455,7 +488,9 @@ def explore_package(
             overview_table.add_row("Package Filename", mapping_entry.package_name)
             overview_table.add_row(
                 "PyPI Package(s)",
-                ", ".join(mapping_entry.pypi_normalized_names) if mapping_entry.pypi_normalized_names else "None"
+                ", ".join(mapping_entry.pypi_normalized_names)
+                if mapping_entry.pypi_normalized_names
+                else "None",
             )
 
             console.print(overview_table)
@@ -463,7 +498,11 @@ def explore_package(
             # If there are PyPI packages, show version mapping
             if mapping_entry.pypi_normalized_names and mapping_entry.versions:
                 console.print()
-                versions_table = Table(title="PyPI Version Mapping", show_header=True, header_style="bold magenta")
+                versions_table = Table(
+                    title="PyPI Version Mapping",
+                    show_header=True,
+                    header_style="bold magenta",
+                )
                 versions_table.add_column("PyPI Package", style="cyan")
                 versions_table.add_column("Version", style="green")
 
@@ -475,7 +514,11 @@ def explore_package(
             # If there are direct URLs, show them
             if mapping_entry.direct_url:
                 console.print()
-                url_table = Table(title="Direct URLs (not on PyPI index)", show_header=True, header_style="bold magenta")
+                url_table = Table(
+                    title="Direct URLs (not on PyPI index)",
+                    show_header=True,
+                    header_style="bold magenta",
+                )
                 url_table.add_column("#", style="dim", width=4)
                 url_table.add_column("URL", style="blue")
 
@@ -486,7 +529,9 @@ def explore_package(
 
             # Show a note if no PyPI mapping was found
             if not mapping_entry.pypi_normalized_names:
-                console.print("\n[yellow]⚠ Note: This package does not appear to contain any PyPI packages[/yellow]")
+                console.print(
+                    "\n[yellow]⚠ Note: This package does not appear to contain any PyPI packages[/yellow]"
+                )
 
         else:
             console.print("[red]✗[/red] Could not fetch artifact info from any backend")

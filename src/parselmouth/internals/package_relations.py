@@ -19,12 +19,10 @@ The table is stored as JSON Lines (.jsonl) format for:
 
 import gzip
 import io
-import json
 import logging
 from collections import defaultdict
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Iterator, Optional
+from typing import Iterator, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -55,11 +53,11 @@ def parse_conda_filename(filename: CondaFileName) -> tuple[CondaVersion, str]:
         Tuple of (version, build_string)
     """
     # Remove .conda or .tar.bz2 extension
-    name = filename.replace('.conda', '').replace('.tar.bz2', '')
+    name = filename.replace(".conda", "").replace(".tar.bz2", "")
 
     # Split by '-' to get [package_name, version, build]
     # Note: package name itself might contain '-', so we split from the right
-    parts = name.rsplit('-', 2)
+    parts = name.rsplit("-", 2)
 
     if len(parts) >= 3:
         version = parts[-2]
@@ -105,15 +103,14 @@ class PackageRelation(BaseModel):
     # Metadata
     channel: str
     direct_url: Optional[list[PyPISourceUrl]] = Field(
-        default=None,
-        description="Direct URLs when package is not on PyPI index"
+        default=None, description="Direct URLs when package is not on PyPI index"
     )
 
-    @field_validator('conda_hash')
+    @field_validator("conda_hash")
     @classmethod
     def validate_hash(cls, v: str) -> str:
         """Ensure hash is lowercase hex string"""
-        if not all(c in '0123456789abcdef' for c in v):
+        if not all(c in "0123456789abcdef" for c in v):
             raise ValueError(f"Hash must be lowercase hex string, got: {v}")
         return v
 
@@ -144,9 +141,7 @@ class RelationsTable:
 
     @classmethod
     def from_conda_to_pypi_index(
-        cls,
-        index: IndexMapping,
-        channel: SupportedChannels
+        cls, index: IndexMapping, channel: SupportedChannels
     ) -> "RelationsTable":
         """
         Build relations table from existing conda->pypi hash-based index.
@@ -166,9 +161,7 @@ class RelationsTable:
 
     @staticmethod
     def _entry_to_relations(
-        conda_hash: str,
-        entry: MappingEntry,
-        channel: str
+        conda_hash: str, entry: MappingEntry, channel: str
     ) -> list[PackageRelation]:
         """Convert a MappingEntry to one or more PackageRelation objects"""
         relations = []
@@ -215,14 +208,16 @@ class RelationsTable:
 
         if compress:
             buffer = io.BytesIO()
-            with gzip.GzipFile(fileobj=buffer, mode='wb') as gz:
+            with gzip.GzipFile(fileobj=buffer, mode="wb") as gz:
                 gz.write(jsonl_content)
             return buffer.getvalue()
 
         return jsonl_content
 
     @classmethod
-    def from_jsonl(cls, data: bytes, channel: SupportedChannels, compressed: bool = True) -> "RelationsTable":
+    def from_jsonl(
+        cls, data: bytes, channel: SupportedChannels, compressed: bool = True
+    ) -> "RelationsTable":
         """
         Load table from JSON Lines format.
 
@@ -262,7 +257,9 @@ class RelationsTable:
             unique_pypi_packages=len(unique_pypi),
         )
 
-    def generate_pypi_to_conda_lookups(self) -> dict[PyPIName, dict[PyPIVersion, list[CondaPackageVersion]]]:
+    def generate_pypi_to_conda_lookups(
+        self,
+    ) -> dict[PyPIName, dict[PyPIVersion, list[CondaPackageVersion]]]:
         """
         Generate PyPI -> Conda lookup mapping from the table.
 
@@ -273,7 +270,10 @@ class RelationsTable:
         logger.info("Generating PyPI -> Conda lookups from relations table")
 
         # Build intermediate structure: {pypi_name: {pypi_version: {conda_name: {conda_version: [builds]}}}}
-        lookup: dict[PyPIName, dict[PyPIVersion, dict[CondaPackageName, dict[CondaVersion, set[str]]]]] = defaultdict(
+        lookup: dict[
+            PyPIName,
+            dict[PyPIVersion, dict[CondaPackageName, dict[CondaVersion, set[str]]]],
+        ] = defaultdict(
             lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
         )
 
@@ -282,7 +282,9 @@ class RelationsTable:
             conda_version, build_string = parse_conda_filename(relation.conda_filename)
 
             # Add to nested structure
-            lookup[relation.pypi_name][relation.pypi_version][relation.conda_name][conda_version].add(build_string)
+            lookup[relation.pypi_name][relation.pypi_version][relation.conda_name][
+                conda_version
+            ].add(build_string)
 
         # Convert to final structure with CondaPackageVersion objects
         result: dict[PyPIName, dict[PyPIVersion, list[CondaPackageVersion]]] = {}
@@ -296,7 +298,7 @@ class RelationsTable:
                             CondaPackageVersion(
                                 name=conda_name,
                                 version=conda_version,
-                                builds=sorted(builds)
+                                builds=sorted(builds),
                             )
                         )
                 result[pypi_name][pypi_version] = conda_pkg_versions

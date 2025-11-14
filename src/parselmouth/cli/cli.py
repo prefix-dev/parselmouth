@@ -113,39 +113,50 @@ def update_mapping(channel: SupportedChannels = SupportedChannels.CONDA_FORGE):
 
 
 @app.command()
-def update_relations_table(
+def update_v1_mappings(
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
     upload: bool = False,
     output_dir: Optional[str] = None,
     skip_unchanged: bool = True,
+    public_url: bool = False,
 ):
     """
-    Generate and upload the package relations table (recommended approach).
+    Generate and upload v1 mappings (relations table + PyPI lookup files).
 
     This creates:
     - Master relations table (JSONL) at /relations-v1/{channel}/relations.jsonl.gz
+    - Relations metadata at /relations-v1/{channel}/metadata.json
     - PyPI -> Conda lookup files at /pypi-to-conda-v1/{channel}/{pypi_name}.json
 
-    The table-based approach is the single source of truth for package mappings.
+    The v1 format is table-based and serves as the single source of truth.
     Both Conda->PyPI and PyPI->Conda lookups are derived from this table.
 
     By default, uses incremental mode (--skip-unchanged) to only upload changed lookup files.
     Use --no-skip-unchanged to force upload all files (slower but ensures consistency).
 
+    Use --public-url to download index from public HTTPS URL (no R2 credentials needed).
+    This is useful for local testing without R2 access.
+
     Examples:
-        # Generate and save locally
-        parselmouth update-relations-table --output-dir ./output
+        # Generate and save locally (no credentials needed)
+        parselmouth update-v1-mappings --output-dir ./output --public-url
 
         # Generate and upload to S3 (CI/production) - incremental mode
-        parselmouth update-relations-table --upload
+        parselmouth update-v1-mappings --upload --channel conda-forge
 
         # Force upload all files (full mode)
-        parselmouth update-relations-table --upload --no-skip-unchanged
+        parselmouth update-v1-mappings --upload --no-skip-unchanged
 
         # Both save locally and upload
-        parselmouth update-relations-table --upload --output-dir ./output
+        parselmouth update-v1-mappings --upload --output-dir ./output
     """
-    relations_updater_main(channel=channel, upload=upload, output_dir=output_dir, skip_unchanged=skip_unchanged)
+    relations_updater_main(
+        channel=channel,
+        upload=upload,
+        output_dir=output_dir,
+        skip_unchanged=skip_unchanged,
+        public_url=public_url,
+    )
 
 
 @app.command()

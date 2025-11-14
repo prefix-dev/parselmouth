@@ -5,7 +5,6 @@ from pathlib import Path
 import tarfile
 from ruamel import yaml
 from typing import Generator, Tuple
-import requests
 import logging
 import conda_forge_metadata.artifact_info
 from conda_forge_metadata.artifact_info.info_json import (
@@ -20,6 +19,7 @@ import zipfile
 import zstandard as zstd
 
 from parselmouth.internals.channels import ChannelUrls, SupportedChannels
+from parselmouth.internals.http_utils import get_global_session
 
 from dotenv import load_dotenv
 
@@ -38,7 +38,8 @@ def fetch_channel_labels(channel: SupportedChannels) -> list[str]:
     token = load_anaconda_token()
     headers = {"Authorization": f"token {token}"}
 
-    response = requests.get(
+    session = get_global_session()
+    response = session.get(
         f"https://api.anaconda.org/channels/{channel}", headers=headers
     )
     response.raise_for_status()
@@ -50,7 +51,8 @@ def fetch_channel_labels(channel: SupportedChannels) -> list[str]:
 def get_all_archs_available(channel: SupportedChannels) -> list[str]:
     channel_url = ChannelUrls.main_channel(channel)
 
-    response = requests.get(urljoin(channel_url, "channeldata.json"))
+    session = get_global_session()
+    response = session.get(urljoin(channel_url, "channeldata.json"))
 
     response.raise_for_status()
 
@@ -79,7 +81,8 @@ def get_subdir_repodata(
         # For standard channels, use the regular URL
         subdir_repodata = urljoin(channel_url, f"{subdir}/repodata.json")
 
-    response = requests.get(subdir_repodata)
+    session = get_global_session()
+    response = session.get(subdir_repodata)
     if not response.ok:
         logging.error(
             f"Request for repodata to {subdir_repodata} failed. {response.reason}"
@@ -127,7 +130,8 @@ def download_and_extract_artifact(
     artifact_url = f"https://conda.anaconda.org/{channel}/{subdir}/{artifact}"
 
     # Download the package to a temporary file
-    response = requests.get(artifact_url, stream=True)
+    session = get_global_session()
+    response = session.get(artifact_url, stream=True)
     response.raise_for_status()
 
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:

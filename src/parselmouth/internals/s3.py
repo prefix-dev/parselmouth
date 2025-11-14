@@ -98,14 +98,31 @@ class S3:
                 max_pool_connections=50,
             )
 
-            s3_client = boto3.client(
-                service_name="s3",
-                endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
-                aws_access_key_id=f"{access_key_id}",
-                aws_secret_access_key=f"{access_key_secret}",
-                region_name="eeur",  # Must be one of: wnam, enam, weur, eeur, apac, auto
-                config=boto_config,
+            # Check for custom S3 endpoint (for local MinIO testing)
+            # Support both R2_PREFIX_ENDPOINT and standard AWS_ENDPOINT_URL
+            endpoint_url = os.getenv("R2_PREFIX_ENDPOINT") or os.getenv(
+                "AWS_ENDPOINT_URL"
             )
+            if endpoint_url:
+                # Custom S3-compatible endpoint (e.g., MinIO at http://localhost:9000)
+                logging.info(f"Using custom S3 endpoint: {endpoint_url}")
+                s3_client = boto3.client(
+                    service_name="s3",
+                    endpoint_url=endpoint_url,
+                    aws_access_key_id=access_key_id,
+                    aws_secret_access_key=access_key_secret,
+                    config=boto_config,
+                )
+            else:
+                # Default: Cloudflare R2 endpoint
+                s3_client = boto3.client(
+                    service_name="s3",
+                    endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
+                    aws_access_key_id=f"{access_key_id}",
+                    aws_secret_access_key=f"{access_key_secret}",
+                    region_name="eeur",  # Must be one of: wnam, enam, weur, eeur, apac, auto
+                    config=boto_config,
+                )
             self._s3_client = s3_client
 
     def get_channel_index(self, channel: SupportedChannels) -> Optional[IndexMapping]:
@@ -192,19 +209,32 @@ class S3:
         pypi_name: PyPIName,
         data: bytes,
         channel: SupportedChannels,
+        content_hash: Optional[str] = None,
     ) -> None:
         """
         Upload a single PyPI -> Conda lookup file.
 
         These are derived from the relations table and cached for fast lookups.
         URL: /pypi-to-conda-{RELATIONS_VERSION}/{channel}/{pypi_name}.json
+
+        Args:
+            pypi_name: The PyPI package name
+            data: The JSON data to upload
+            channel: The conda channel
+            content_hash: Optional SHA256 hash to store as metadata for change detection
         """
         key = f"{PYPI_TO_CONDA}-{RELATIONS_VERSION}/{channel}/{pypi_name}.json"
+
+        # Prepare extra args with metadata if hash provided
+        extra_args = {}
+        if content_hash:
+            extra_args["Metadata"] = {"content-hash": content_hash}
 
         self._s3_client.upload_fileobj(
             io.BytesIO(data),
             self.bucket_name,
             key,
+            ExtraArgs=extra_args if extra_args else None,
         )
 
     def get_pypi_lookup_file(
@@ -228,6 +258,75 @@ class S3:
             return response["Body"].read()
         except self._s3_client.exceptions.NoSuchKey:
             return None
+
+    def list_pypi_lookup_files(
+        self,
+        channel: SupportedChannels,
+    ) -> set[PyPIName]:
+        """
+        List all PyPI lookup filenames for a channel (without .json suffix).
+
+        Used to detect stale lookup files that should be deleted.
+        """
+        prefix = f"{PYPI_TO_CONDA}-{RELATIONS_VERSION}/{channel}/"
+        lookup_names: set[PyPIName] = set()
+
+        try:
+            paginator = self._s3_client.get_paginator("list_objects_v2")
+            for page in paginator.paginate(Bucket=self.bucket_name, Prefix=prefix):
+                for obj in page.get("Contents", []):
+                    key = obj["Key"]
+                    file_name = key[len(prefix) :]
+                    if file_name.endswith(".json"):
+                        file_name = file_name[:-5]
+                    lookup_names.add(file_name)
+        except boto3.exceptions.Boto3Error as exc:
+            logging.error(f"Failed to list PyPI lookup files for {channel}: {exc}")
+
+        return lookup_names
+
+    def get_pypi_lookup_file_hash(
+        self,
+        pypi_name: PyPIName,
+        channel: SupportedChannels,
+    ) -> Optional[str]:
+        """
+        Get the content hash of a PyPI lookup file using HEAD request (no download).
+
+        This is much faster than downloading the file to compute the hash.
+
+        Returns:
+            The SHA256 hash stored in metadata, or None if file doesn't exist or has no metadata
+        """
+        key = f"{PYPI_TO_CONDA}-{RELATIONS_VERSION}/{channel}/{pypi_name}.json"
+
+        try:
+            response = self._s3_client.head_object(
+                Bucket=self.bucket_name,
+                Key=key,
+            )
+            # S3 metadata keys are lowercase in the response
+            metadata = response.get("Metadata", {})
+            return metadata.get("content-hash")
+        except self._s3_client.exceptions.NoSuchKey:
+            return None
+        except Exception as e:
+            # Catch 404 errors that might not be NoSuchKey (e.g., from S3-compatible services)
+            if "404" in str(e) or "Not Found" in str(e):
+                return None
+            # Re-raise unexpected errors
+            raise
+
+    def delete_pypi_lookup_file(
+        self,
+        pypi_name: PyPIName,
+        channel: SupportedChannels,
+    ) -> None:
+        """
+        Delete a PyPI lookup file from S3.
+        """
+        key = f"{PYPI_TO_CONDA}-{RELATIONS_VERSION}/{channel}/{pypi_name}.json"
+        self._s3_client.delete_object(Bucket=self.bucket_name, Key=key)
 
     def pypi_lookup_exists(
         self,

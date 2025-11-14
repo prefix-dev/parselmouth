@@ -23,6 +23,42 @@
 
 `parselmouth` is a utility designed to facilitate the mapping of Conda package names to their corresponding PyPI names and the inverse. This tool automates the process of generating and updating mappings on an hourly basis, ensuring that users have access to the most accurate and up-to-date information.
 
+## Local Testing
+
+Test the complete pipeline locally with MinIO (S3-compatible storage):
+
+```bash
+# One-command start (recommended) - starts MinIO + interactive mode
+pixi run test-interactive
+
+# Or run manually with more control:
+
+# 1. Start MinIO
+docker-compose up -d
+
+# 2. Run with defaults (pytorch, noarch, package names starting with 't')
+pixi run test-pipeline
+
+# 3. Test with conda-forge, package names starting with 'n' (numpy, napari, etc.)
+pixi run test-pipeline --channel conda-forge --letter n
+
+# 4. Test incrementally (skip packages already in MinIO)
+pixi run test-pipeline --mode incremental
+
+# 5. Test with all packages in a subdir (warning: can be slow!)
+pixi run test-pipeline --channel bioconda --letter all
+
+# Multiple channels can coexist in the same bucket (separated by path prefixes)
+
+# Access MinIO UI at http://localhost:9001 (minioadmin / minioadmin)
+
+# Clean up when done
+pixi run clean-all          # Everything + stop MinIO
+pixi run clean-local-data   # Just cache + outputs (keep MinIO)
+```
+
+See [docs/LOCAL_TESTING.md](docs/LOCAL_TESTING.md) for detailed information.
+
 ## Conda to PyPI
 
 Example of mapping for `numpy-1.26.4-py311h64a7726_0.conda` with sha256 `3f4365e11b28e244c95ba8579942b0802761ba7bb31c026f50d1a9ea9c728149`
@@ -154,6 +190,75 @@ This architecture allows for:
 - Gradual migration from v0 to v1 APIs
 - Rollback capability if issues arise
 - Parallel operation of both systems during transition
+
+## Relations Table Structure
+
+The `RelationsTable` is a normalized table that maps Conda packages to PyPI packages and vice versa. Think of it as a many-to-many relationship database.
+
+### Basic Concept
+
+The table stores pairs of related packages:
+- **Conda side**: package name + version + build (e.g., `numpy-1.26.4-py311h64a7726_0`)
+- **PyPI side**: package name + version (e.g., `numpy==1.26.4`)
+
+Each row in the table represents one relationship between a specific conda build and a PyPI package version.
+
+### How Lookups Work
+
+**Conda → PyPI (hash-based):**
+- Given a conda package hash, find which PyPI packages it contains
+- Location: `hash-v0/{sha256}`
+- Example: `numpy-1.26.4-py311h64a7726_0` → `numpy==1.26.4`
+
+**PyPI → Conda (aggregated files):**
+- Given a PyPI package name, find all available conda versions
+- Location: `pypi-to-conda-v1/{channel}/{pypi_name}.json`
+- Example: `requests` → all conda packages containing requests
+
+```json
+{
+  "pypi_name": "requests",
+  "conda_versions": {
+    "2.31.0": ["requests", "jupyter-sphinx"],
+    "2.32.3": ["requests"]
+  }
+}
+```
+
+### Relationship Types
+
+1. **Many-to-One (common):** Multiple conda builds for one PyPI version
+   - Example: `numpy-1.26.4-py311h...` and `numpy-1.26.4-py310h...` both map to `numpy==1.26.4`
+
+2. **One-to-Many (vendoring):** One conda package contains multiple PyPI packages
+   - Example: `arm_pyart` vendors `requests`, creating two mappings from one conda build
+
+3. **Many-to-Many:** A PyPI version appears in multiple conda packages
+   - Example: `requests==2.31.0` is in both `requests` and `jupyter-sphinx` conda packages
+
+### Storage Format
+
+The table is stored as JSONL (JSON Lines) with gzip compression:
+
+```python
+# Each line is one relation
+{"conda_name": "numpy", "conda_version": "1.26.4", "conda_build": "py311h64a7726_0",
+ "pypi_name": "numpy", "pypi_version": "1.26.4", "channel": "conda-forge"}
+```
+
+**Benefits:**
+- Each relationship stored exactly once (no duplication)
+- Can query in either direction
+- Incremental updates are simple
+- Compact: ~10-30 MB compressed for conda-forge
+
+### Statistics (conda-forge example)
+
+- Total relationships: ~1.5 million
+- Unique conda packages: ~1.4 million
+- Unique PyPI packages: ~18,000
+
+The ratio (~1.07 relationships per conda package) shows that most conda packages map to a single PyPI package, with occasional vendoring creating the extra relationships.
 
 ## Thanks!
 

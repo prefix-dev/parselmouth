@@ -15,7 +15,7 @@ jobs:
     outputs:
       string_list: ${{ steps.generate.outputs.string_list }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -59,7 +59,7 @@ jobs:
         subdirs: ${{fromJson(needs.generate_hash_letters.outputs.string_list)}}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -99,7 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: updater_of_records
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -128,12 +128,12 @@ jobs:
           R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
           R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
 
-  # ===== NEW JOB: Generate Relations Table (v1) =====
-  update_relations_table:
+  # ===== NEW JOB: Generate v1 Mappings (Relations Table + PyPI Lookups) =====
+  update_v1_mappings:
     runs-on: ubuntu-latest
     needs: updater_of_index # Run AFTER index is merged
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -149,10 +149,10 @@ jobs:
         run: |
           pixi install
 
-      - name: Generate and upload relations table
+      - name: Generate and upload v1 mappings (relations table + PyPI lookups)
         run: |
-          echo "Generating relations table from updated index..."
-          pixi run parselmouth update-relations-table --upload --channel conda-forge
+          echo "Generating v1 mappings from updated index..."
+          pixi run parselmouth update-v1-mappings --upload --channel conda-forge
         env:
           R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
           R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
@@ -164,11 +164,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       content: "write-all" # To push on main branch
-    needs: [updater_of_index, update_relations_table] # Wait for BOTH v0 and v1
+    needs: [updater_of_index, update_v1_mappings] # Wait for BOTH v0 and v1
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
