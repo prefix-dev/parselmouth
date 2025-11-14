@@ -8,6 +8,8 @@ on:
 
 jobs:
   update:
+    permissions:
+      contents: write
     uses: ./.github/workflows/update_channel_v0_v1.yml
     with:
       channel: tango-controls
