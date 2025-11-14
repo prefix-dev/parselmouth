@@ -14,7 +14,7 @@ classifiers = [
 ]
 # These are pypi dependencies
 dependencies = [
-  "conda-forge-metadata~=0.8.1",
+  "conda-forge-metadata>=0.12.0",
   # needs to be published
   "conda-oci-mirror @ git+https://github.com/channel-mirrors/conda-oci-mirror.git@25ea3e436f0b0bc5a9c646121efafc9c68e116cd",
 ]

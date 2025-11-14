@@ -116,6 +116,54 @@ def get_all_packages_by_subdir(
     return repodatas
 
 
+def download_and_extract_tar_bz2_artifact(
+    channel: str,
+    subdir: str,
+    artifact: str,
+) -> ArtifactData | None:
+    """
+    Download and extract .tar.bz2 artifact data directly.
+
+    This is a fallback for when the streaming backend fails with YAML errors.
+    It downloads the entire package and extracts it manually.
+    """
+    if not artifact.endswith(".tar.bz2"):
+        raise ValueError(
+            f"This function only supports .tar.bz2 artifacts. {artifact} was given"
+        )
+
+    artifact_url = f"https://conda.anaconda.org/{channel}/{subdir}/{artifact}"
+    logging.debug(f"Downloading {artifact} from {artifact_url} for manual extraction")
+
+    # Download the package to a temporary file
+    session = get_global_session()
+    try:
+        response = session.get(artifact_url, stream=True, timeout=120)
+        response.raise_for_status()
+    except Exception as e:
+        logging.warning(f"Failed to download {artifact}: {e}")
+        return None
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".tar.bz2") as temp_file:
+        for chunk in response.iter_content(chunk_size=8192):
+            temp_file.write(chunk)
+        temp_file_path = temp_file.name
+
+    try:
+        # Open the tar.bz2 file directly
+        with tarfile.open(temp_file_path, "r:bz2") as tar:
+            return _extract_artifact_data_from_tar(tar)
+    except Exception as e:
+        logging.error(f"Failed to extract {artifact}: {e}")
+        return None
+    finally:
+        # Clean up temp file
+        try:
+            os.unlink(temp_file_path)
+        except Exception:
+            pass
+
+
 def download_and_extract_artifact(
     channel: str,
     subdir: str,
@@ -380,13 +428,39 @@ def get_artifact_info(
         return download_and_extract_artifact(channel, subdir, artifact)
 
     if backend == "streamed" and artifact.endswith(".tar.bz2"):
-        # bypass get_artifact_info_as_json as it does not support .tar.bz2
+        # Try streaming backend first for .tar.bz2 files
         from conda_forge_metadata.streaming import get_streamed_artifact_data
 
-        return _patched_info_json_from_tar_generator(
-            get_streamed_artifact_data(channel, subdir, artifact),
-            skip_files_suffixes=(".pyc", ".txt"),
-        )
+        try:
+            return _patched_info_json_from_tar_generator(
+                get_streamed_artifact_data(channel, subdir, artifact),
+                skip_files_suffixes=(".pyc", ".txt"),
+            )
+        except Exception as e:
+            # If streaming fails (e.g., YAML errors, invalid data), fall back to downloading
+            error_str = str(e)
+            # Common errors that indicate we should fallback:
+            # - YAML parsing errors: "while scanning for the next token"
+            # - Data corruption: "Invalid data stream"
+            # - Tar errors: "invalid header"
+            if any(
+                err in error_str
+                for err in [
+                    "while scanning for the next token",
+                    "YAML",
+                    "Invalid data stream",
+                    "invalid header",
+                    "Truncated",
+                ]
+            ):
+                logging.debug(
+                    f"Streaming backend failed for {artifact}, "
+                    f"falling back to download: {type(e).__name__}: {e}"
+                )
+                return download_and_extract_tar_bz2_artifact(channel, subdir, artifact)
+            else:
+                # Re-raise unexpected errors
+                raise
 
     # patch the info_json_from_tar_generator to handle the paths.json
     # instead of the `files`

@@ -371,15 +371,15 @@ def test_end_to_end_pipeline_with_real_data(mock_s3_environment, sample_repodata
     assert relations_check is not None
     print("   ✓ v1 relations table access works")
 
-    # Test v1 PyPI lookup access for all packages
-    for pypi_name in ["numpy", "requests", "pandas", "scipy"]:
+    # Test v1 PyPI lookup access for remaining packages (requests was deleted in step 9)
+    for pypi_name in ["numpy", "pandas", "scipy"]:
         lookup_data = s3.get_pypi_lookup_file(pypi_name, SupportedChannels.CONDA_FORGE)
         assert lookup_data is not None
         lookup_json = json.loads(lookup_data.decode())
         assert lookup_json["format_version"] == "1.0"
         assert lookup_json["pypi_name"] == pypi_name
         assert "conda_versions" in lookup_json
-    print("   ✓ v1 PyPI lookup access works for all packages")
+    print("   ✓ v1 PyPI lookup access works for remaining packages")
 
     # Test bucket contents
     all_objects = mock_s3_environment.list_objects_v2(Bucket="test-bucket")

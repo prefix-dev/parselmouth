@@ -67,7 +67,9 @@ logger = logging.getLogger(__name__)
 
 
 # Filter out YAML parsing errors from conda-forge-metadata (external library)
-# These are often due to malformed package metadata and are already handled gracefully
+# These errors occur when the streaming backend tries and fails to parse some packages.
+# The code automatically falls back to downloading the package manually, so these errors
+# are expected and don't indicate actual failures.
 class YAMLErrorFilter(logging.Filter):
     def filter(self, record):
         # Suppress "while scanning for the next token" YAML errors from root logger
@@ -79,7 +81,7 @@ class YAMLErrorFilter(logging.Filter):
         return True
 
 
-# Apply filter to root logger to suppress external library YAML errors
+# Apply filter to root logger to suppress expected YAML errors (we have a fallback)
 logging.getLogger().addFilter(YAMLErrorFilter())
 
 
@@ -425,7 +427,7 @@ def main():
     console.print("[dim]Processing packages and uploading to MinIO (hash-v0/)...[/dim]")
     console.print(f"[dim]Processing '{subdir_letter}' from {channel.value}[/dim]")
     console.print(
-        "[dim]Note: Some packages may fail due to malformed metadata (this is normal)[/dim]"
+        "[dim]Note: Some packages may require fallback to download mode (auto-handled)[/dim]"
     )
     step_start = time.time()
 
