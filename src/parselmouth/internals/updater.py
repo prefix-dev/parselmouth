@@ -68,7 +68,7 @@ async def upload_to_s3(names_mapping: IndexMapping):
     config = botocore.client.Config(
         max_pool_connections=50,
     )
-    async with session.client(
+    async with session.client(  # type: ignore[call-overload]
         "s3",
         endpoint_url=final_endpoint,
         config=config,

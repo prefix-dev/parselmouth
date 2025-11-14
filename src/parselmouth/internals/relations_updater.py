@@ -20,7 +20,7 @@ import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, TYPE_CHECKING
 
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore[import-untyped]
 
 from parselmouth.internals.channels import SupportedChannels
 from parselmouth.internals.http_utils import get_global_session
@@ -99,10 +99,12 @@ def generate_and_upload_relations_table(
         # Download from S3 (requires credentials)
         s3_instance = s3 or s3_client
         logger.info("Downloading existing Conda -> PyPI index from S3...")
-        existing_index = s3_instance.get_channel_index(channel=channel)
+        existing_index_maybe = s3_instance.get_channel_index(channel=channel)
 
-        if not existing_index:
+        if not existing_index_maybe:
             raise ValueError(f"No existing index found for channel {channel}")
+
+        existing_index = existing_index_maybe
 
     logger.info(f"Loaded index with {len(existing_index.root)} conda packages")
 
@@ -231,7 +233,7 @@ def generate_and_upload_pypi_lookups(
     logger.info(f"Generated {len(lookups)} PyPI lookup files")
 
     # Serialize all lookups and compute hashes once
-    serialized_with_hash = {
+    serialized_with_hash: dict[PyPIName, dict[str, bytes | str]] = {
         pypi_name: {
             "data": (data := lookup.to_json_bytes()),
             "hash": _compute_file_hash(data),
@@ -253,8 +255,8 @@ def generate_and_upload_pypi_lookups(
                     executor.submit(
                         _check_file_needs_update,
                         pypi_name,
-                        info["data"],
-                        info["hash"],
+                        info["data"],  # type: ignore[arg-type]
+                        info["hash"],  # type: ignore[arg-type]
                         channel,
                         s3_instance,
                     ): (pypi_name, info)
@@ -301,17 +303,17 @@ def generate_and_upload_pypi_lookups(
                     executor.submit(
                         s3_instance.upload_pypi_lookup_file,
                         pypi_name,
-                        info["data"],
+                        info["data"],  # type: ignore[arg-type]
                         channel,
-                        info["hash"],  # Pass hash as metadata
+                        info["hash"],  # type: ignore[arg-type]
                     ): pypi_name
                     for pypi_name, info in files_to_upload.items()
                 }
 
                 # Track progress and handle errors
                 with tqdm(total=len(futures), desc="Uploading PyPI lookups") as pbar:
-                    for future in as_completed(futures):
-                        pypi_name = futures[future]
+                    for future in as_completed(futures):  # type: ignore[assignment]
+                        pypi_name = futures[future]  # type: ignore[index]
                         try:
                             future.result()
                             pbar.update(1)
@@ -332,7 +334,7 @@ def generate_and_upload_pypi_lookups(
                 f"Deleting {len(stale_files)} stale PyPI lookup files from S3..."
             )
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = {
+                delete_futures = {
                     executor.submit(
                         s3_instance.delete_pypi_lookup_file,
                         pypi_name,
@@ -341,8 +343,8 @@ def generate_and_upload_pypi_lookups(
                     for pypi_name in stale_files
                 }
 
-                with tqdm(total=len(futures), desc="Deleting stale lookups") as pbar:
-                    for future in as_completed(futures):
+                with tqdm(total=len(delete_futures), desc="Deleting stale lookups") as pbar:
+                    for future in as_completed(delete_futures):  # type: ignore[assignment]
                         future.result()
                         pbar.update(1)
             logger.info("Stale PyPI lookup cleanup complete")
@@ -358,12 +360,15 @@ def generate_and_upload_pypi_lookups(
         ):
             lookup_path = os.path.join(lookups_dir, f"{pypi_name}.json")
             with open(lookup_path, "wb") as f:
-                f.write(info["data"])
+                f.write(info["data"])  # type: ignore[arg-type]
 
         logger.info(f"Saved {len(serialized_with_hash)} lookup files to {lookups_dir}")
 
     # Return just the data (backward compatibility)
-    return {pypi_name: info["data"] for pypi_name, info in serialized_with_hash.items()}
+    return {
+        pypi_name: info["data"]  # type: ignore[misc]
+        for pypi_name, info in serialized_with_hash.items()
+    }
 
 
 def main(

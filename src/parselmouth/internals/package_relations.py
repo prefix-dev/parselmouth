@@ -164,7 +164,7 @@ class RelationsTable:
         conda_hash: str, entry: MappingEntry, channel: str
     ) -> list[PackageRelation]:
         """Convert a MappingEntry to one or more PackageRelation objects"""
-        relations = []
+        relations: list[PackageRelation] = []
 
         if not entry.pypi_normalized_names:
             return relations

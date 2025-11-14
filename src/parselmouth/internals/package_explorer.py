@@ -104,7 +104,7 @@ def explore_package(
         matching_packages = dict(list(matching_packages.items())[:100])
 
     # Group by base package name (remove version and build)
-    base_packages = {}
+    base_packages: dict[str, list[str]] = {}
     for full_name in matching_packages.keys():
         # Extract base name by removing version suffix
         # e.g., "numpy-1.26.4-py311_0" -> "numpy"
@@ -138,8 +138,8 @@ def explore_package(
     package_versions = base_packages[selected_base]
 
     # Group by version (without build) and calculate total size
-    versions = {}
-    version_sizes = {}
+    versions: dict[str, list[str]] = {}
+    version_sizes: dict[str, int] = {}
     for full_name in package_versions:
         parts = full_name.rsplit("-", 2)
         if len(parts) >= 3:
@@ -329,8 +329,8 @@ def explore_package(
             )
 
         # Aggregate the data
-        aggregated_pypi_packages = {}  # {pypi_name: {version: [build_names]}}
-        aggregated_direct_urls = {}  # {url: [build_names]}
+        aggregated_pypi_packages: dict[str, dict[str, list[str]]] = {}  # {pypi_name: {version: [build_names]}}
+        aggregated_direct_urls: dict[str, list[str]] = {}  # {url: [build_names]}
         conda_package_name = None
 
         for build_name, mapping in all_mappings:
@@ -342,14 +342,14 @@ def explore_package(
                     if pypi_name not in aggregated_pypi_packages:
                         aggregated_pypi_packages[pypi_name] = {}
 
-                    version = mapping.versions.get(pypi_name)
-                    if version:
-                        if version not in aggregated_pypi_packages[pypi_name]:
-                            aggregated_pypi_packages[pypi_name][version] = []
+                    pypi_version: str | None = mapping.versions.get(pypi_name)
+                    if pypi_version:
+                        if pypi_version not in aggregated_pypi_packages[pypi_name]:
+                            aggregated_pypi_packages[pypi_name][pypi_version] = []
                         # Extract just the build string
                         parts = build_name.rsplit("-", 2)
                         build_string = parts[2] if len(parts) >= 3 else build_name
-                        aggregated_pypi_packages[pypi_name][version].append(
+                        aggregated_pypi_packages[pypi_name][pypi_version].append(
                             build_string
                         )
 
