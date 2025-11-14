@@ -30,7 +30,7 @@ If you want more control or prefer command-line arguments:
 
 ```bash
 # Start MinIO container
-docker-compose up -d
+pixi run start-minio
 
 # Wait a few seconds for MinIO to initialize
 # MinIO UI will be available at http://localhost:9001
@@ -96,7 +96,7 @@ Browse the `conda` bucket to see:
 ### 4. Clean Up
 
 ```bash
-# Clean everything (recommended)
+# Clean everything (stops MinIO and removes all data)
 pixi run clean-all
 
 # Or clean separately:
@@ -109,9 +109,6 @@ pixi run clean-outputs
 
 # Just remove conda package cache (can grow to 1GB+)
 pixi run clean-cache
-
-# Just stop MinIO
-docker-compose down -v
 ```
 
 **What gets cleaned:**
@@ -274,7 +271,9 @@ aws --endpoint-url http://localhost:9000 \
 
 ### Persisting Data Between Runs
 
-MinIO data is stored in a Docker volume by default. To persist between `docker-compose down`:
+MinIO data is stored in a Docker volume by default. The `pixi run clean-all` command will stop MinIO and remove all volumes.
+
+If you want to manually manage docker-compose:
 
 ```bash
 # Stop without removing volumes
@@ -282,11 +281,7 @@ docker-compose down
 
 # Restart with existing data
 docker-compose up -d
-```
 
-To completely reset:
-
-```bash
 # Remove everything including volumes
 docker-compose down -v
 ```
@@ -356,23 +351,25 @@ The local setup is perfect for:
 ## Example Workflow
 
 ```bash
-# 1. Start fresh
-docker-compose down -v
-docker-compose up -d
+# 1. Start fresh (clean everything first)
+pixi run clean-all
 
-# 2. Run pipeline (fresh mode)
+# 2. Start MinIO
+pixi run start-minio
+
+# 3. Run pipeline (fresh mode)
 pixi run test-pipeline
 
-# 3. Verify in UI
+# 4. Verify in UI
 open http://localhost:9001
 
-# 4. Test incremental update (skips existing packages)
+# 5. Test incremental update (skips existing packages)
 pixi run test-pipeline --mode incremental
 
-# 5. Check that existing packages were skipped (look for logs)
+# 6. Check that existing packages were skipped (look for logs)
 
-# 6. Clean up
-docker-compose down -v
+# 7. Clean up
+pixi run clean-all
 ```
 
 ## Integration Tests
@@ -383,7 +380,7 @@ To run tests against MinIO:
 
 ```bash
 # Start MinIO
-docker-compose up -d
+pixi run start-minio
 
 # Set environment
 export R2_PREFIX_ENDPOINT="http://localhost:9000"
@@ -392,7 +389,7 @@ export R2_PREFIX_SECRET_ACCESS_KEY="minioadmin"
 export R2_PREFIX_BUCKET="conda"
 
 # Run specific test
-pixi run pytest tests/test_integration_s3_pipeline.py -v
+pixi run test
 ```
 
 ## References
