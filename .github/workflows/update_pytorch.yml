@@ -5,6 +5,12 @@ on:
     # run the job every 30 minutes
     - cron: '*/30 * * * *'
   workflow_dispatch:
+    inputs:
+      force_v1_generation:
+        description: 'Force v1 mappings generation even if no new packages'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   update:
@@ -15,6 +21,7 @@ jobs:
       channel: pytorch
       use_legacy_mapping: false
       needs_anaconda_token: false
+      force_v1_generation: ${{ inputs.force_v1_generation || false }}
     secrets:
       R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
       R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
