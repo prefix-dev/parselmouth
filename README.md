@@ -100,8 +100,8 @@ There are currently two mappings that are online, one of which is work in progre
    So, for example, to find the PyPI name of `numpy-1.26.4-py310h4bfa8fc_0.conda` you can use the following URI:
    `https://conda-mapping.prefix.dev/hash-v0/914476e2d3273fdf9c0419a7bdcb7b31a5ec25949e4afbc847297ff3a50c62c8`
 
-2. **(WIP)** The **PyPI - Conda** name mapping that maps a PyPI package to it's known Conda counterpart. This only works for packages that are available on the conda channels that it references. This is available at `https://conda-mapping.prefix.dev/pypi-to-conda-v0/{channel}/{pypi-normalized-name}.json` where the channel is the name of the channel and the `{pypi-normalized-name}` is the normalized name of the package on PyPI.
-   E.g for `requests` we can use `https://conda-mapping.prefix.dev/pypi-to-conda-v0/conda-forge/requests.json`, which will give you the corresponding json.
+2. **(WIP)** The **PyPI - Conda** name mapping that maps a PyPI package to it's known Conda counterpart. This only works for packages that are available on the conda channels that it references. This is available at `https://conda-mapping.prefix.dev/pypi-to-conda-v1/{channel}/{pypi-normalized-name}.json` where the channel is the name of the channel and the `{pypi-normalized-name}` is the normalized name of the package on PyPI.
+   E.g for `requests` we can use `https://conda-mapping.prefix.dev/pypi-to-conda-v1/conda-forge/requests.json`, which will give you the corresponding json.
    There is
 
 ## Infrastructure and Storage Architecture

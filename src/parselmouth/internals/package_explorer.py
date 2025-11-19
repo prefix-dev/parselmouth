@@ -1,12 +1,19 @@
 """
-Interactive Conda -> PyPI package explorer using Rich for a better UX.
+Interactive Conda <-> PyPI package explorer using Rich for a better UX.
 
-This provides an interactive interface to explore conda packages and discover
-their corresponding PyPI mappings.
+This provides HTTP-based interactive interfaces to:
+1. Explore conda packages and discover their corresponding PyPI mappings (Conda → PyPI)
+2. Explore PyPI packages and discover available conda versions (PyPI → Conda)
+
+All data is fetched via HTTP from either production (https://conda-mapping.prefix.dev)
+or local MinIO (http://localhost:9000/conda).
 """
 
 import logging
+from datetime import datetime
+from typing import Literal
 
+from packaging.version import Version, InvalidVersion
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.table import Table
@@ -19,15 +26,22 @@ from rich.progress import (
 )
 
 from parselmouth.internals.channels import SupportedChannels
-from parselmouth.internals.conda_forge import (
-    get_all_packages_by_subdir,
-    get_artifact_info,
+from parselmouth.internals.index_cache import fetch_channel_index_cached
+from parselmouth.internals.mapping_http_client import (
+    fetch_channel_index_http,
+    fetch_mapping_entry_by_hash,
+    fetch_pypi_lookup,
 )
-from parselmouth.internals.artifact import extract_artifact_mapping
+from parselmouth.internals.s3 import IndexMapping, MappingEntry
+from parselmouth.internals.package_relations import PyPIPackageLookup
 
 
 console = Console()
 logger = logging.getLogger(__name__)
+
+# Endpoint URLs
+PRODUCTION_URL = "https://conda-mapping.prefix.dev"
+LOCAL_MINIO_URL = "http://localhost:9000/conda"
 
 
 def format_size(size_bytes: int) -> str:
@@ -42,498 +56,553 @@ def format_size(size_bytes: int) -> str:
         return f"{size_bytes} B"
 
 
+def select_endpoint_interactive() -> str:
+    """Prompt user to select endpoint (production or local MinIO)."""
+    console.print("\n[yellow]Select Endpoint[/yellow]")
+    console.print("1. Production (https://conda-mapping.prefix.dev)")
+    console.print("2. Local MinIO (http://localhost:9000/conda)")
+
+    choice = Prompt.ask("\nSelect endpoint", choices=["1", "2"], default="1")
+
+    if choice == "1":
+        console.print("[green]✓[/green] Using production endpoint")
+        return PRODUCTION_URL
+    else:
+        console.print("[green]✓[/green] Using local MinIO endpoint")
+        return LOCAL_MINIO_URL
+
+
+def normalize_pypi_name(name: str) -> str:
+    """
+    Normalize PyPI package name (lowercase, hyphens to underscores).
+
+    This follows PEP 503 normalization rules.
+    """
+    return name.lower().replace("-", "_")
+
+
+def sort_versions_descending(versions: dict[str, list[str]]) -> list[tuple[str, list[str]]]:
+    """
+    Sort PyPI versions newest to oldest using packaging.version.
+
+    Args:
+        versions: Dict of version -> list of conda packages
+
+    Returns:
+        List of (version, conda_packages) tuples, sorted newest first
+    """
+    def version_key(item):
+        version_str, _ = item
+        try:
+            return Version(version_str)
+        except InvalidVersion:
+            # Fall back to string comparison for invalid versions
+            return version_str
+
+    items = list(versions.items())
+    try:
+        return sorted(items, key=version_key, reverse=True)
+    except TypeError:
+        # If comparison fails, fall back to string sorting
+        return sorted(items, key=lambda x: x[0], reverse=True)
+
+
+def get_packages_from_index_http(
+    channel: SupportedChannels,
+    base_url: str,
+) -> dict[str, dict[str, MappingEntry]]:
+    """
+    Fetch channel index via HTTP and organize packages by subdir.
+
+    Args:
+        channel: The conda channel to fetch
+        base_url: Base URL for HTTP requests
+
+    Returns:
+        Dict mapping subdir -> {package_filename: MappingEntry}
+    """
+    console.print("\n[bold green]Fetching channel index via HTTP...[/bold green]")
+
+    with console.status("[bold green]Downloading index..."):
+        index = fetch_channel_index_http(channel, base_url=base_url)
+
+    if not index:
+        console.print("[red]✗[/red] Failed to fetch channel index")
+        return {}
+
+    # Organize by subdir
+    # The index.root is a dict of {filename: MappingEntry}
+    # We need to extract subdir from the filename
+    by_subdir: dict[str, dict[str, MappingEntry]] = {}
+
+    for filename, entry in index.root.items():
+        # Extract subdir from filename path if it exists
+        # Format is typically: subdir/package-version-build.conda
+        # But the index may store just the filename
+        # We'll infer from the package_name in the entry
+
+        # For now, we'll need to parse from the actual package structure
+        # Most indices don't include subdir, so we may need to fetch from somewhere else
+        # Let's just put everything in a generic bucket for now and let user browse
+        parts = filename.split("/")
+        if len(parts) > 1:
+            subdir = parts[0]
+        else:
+            subdir = "unknown"
+
+        if subdir not in by_subdir:
+            by_subdir[subdir] = {}
+        by_subdir[subdir][filename] = entry
+
+    # If everything is in "unknown", it means the index doesn't include subdir info
+    # In this case, we need a different approach - just return all packages
+    if len(by_subdir) == 1 and "unknown" in by_subdir:
+        console.print(f"[green]✓[/green] Loaded {len(index.root)} packages from index")
+    else:
+        total = sum(len(packages) for packages in by_subdir.values())
+        console.print(f"[green]✓[/green] Loaded {total} packages across {len(by_subdir)} subdirs")
+
+    return by_subdir
+
+
+def fetch_package_mapping_http(sha256: str, base_url: str) -> MappingEntry | None:
+    """
+    Fetch single package mapping via HTTP.
+
+    Args:
+        sha256: Package SHA256 hash
+        base_url: Base URL for HTTP requests
+
+    Returns:
+        MappingEntry or None if not found
+    """
+    entry = fetch_mapping_entry_by_hash(sha256, base_url=base_url)
+    if not entry:
+        logger.warning(f"No mapping found for hash: {sha256}")
+    return entry
+
+
 def explore_package(
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+    base_url: str | None = None,
+    subdir: str | None = None,
+    package_name: str | None = None,
+    version: str | None = None,
+    build: str | None = None,
 ):
     """
-    Interactive Conda -> PyPI package explorer.
+    Interactive Conda → PyPI package explorer (HTTP-based).
 
-    1. Select platform/subdir
-    2. Enter package name (with suggestions if not found)
+    Interactive flow (when params not provided):
+    1. Select endpoint (production or local)
+    2. Enter package name to search
     3. Select version
-    4. Display all builds with metadata
-    5. Optionally view PyPI mapping
+    4. Display all builds with PyPI mappings
+
+    Non-interactive mode (for testing):
+    Provide package_name, version, and optionally build to skip prompts.
+
+    Args:
+        channel: Conda channel to explore
+        base_url: Base URL for HTTP requests (if None, prompts user)
+        subdir: Platform/subdir (not used currently, kept for compatibility)
+        package_name: Package name to explore
+        version: Package version
+        build: Specific build string (optional)
     """
-    console.print("\n[bold cyan]🔍 Conda → PyPI Package Explorer[/bold cyan]\n")
+    console.print("\n[bold cyan]🔍 Conda → PyPI Package Explorer (HTTP)[/bold cyan]\n")
 
-    # Step 1: Get subdir/platform
-    console.print("[yellow]Step 1: Select Platform/Subdir[/yellow]")
-    console.print("Common options: linux-64, osx-64, osx-arm64, win-64, noarch")
+    # Step 0: Select endpoint if not provided
+    if base_url is None:
+        base_url = select_endpoint_interactive()
 
-    subdir = Prompt.ask("Enter subdir", default="linux-64")
+    console.print(f"\n[cyan]Channel:[/cyan] {channel}")
+    console.print(f"[cyan]Endpoint:[/cyan] {base_url}\n")
 
-    console.print(f"\n[green]✓[/green] Using subdir: {subdir}")
+    # Step 1: Fetch the channel index (with caching)
+    # Use a status display that updates in real-time
+    current_status = ["Initializing..."]  # Use list to allow mutation in callback
 
-    # Step 2: Get package name
-    console.print("\n[yellow]Step 2: Enter Package Name[/yellow]")
+    def update_status(message: str):
+        """Callback to update status message."""
+        current_status[0] = message
 
-    with console.status("[bold green]Loading repodata..."):
-        repodatas = get_all_packages_by_subdir(subdir, channel)
+    with console.status("[bold green]Checking for updates...") as status:
+        # Define callback that updates the status
+        def progress_callback(msg: str):
+            update_status(msg)
+            status.update(f"[bold green]{msg}")
 
-    # Flatten all packages from all labels
-    all_packages = {}
-    for label, packages in repodatas.items():
-        all_packages.update(packages)
+        # Fetch with progress updates
+        index, cache_status = fetch_channel_index_cached(
+            channel,
+            base_url,
+            progress_callback=progress_callback
+        )
 
-    console.print(f"[dim]Loaded {len(all_packages)} packages from {subdir}[/dim]")
+    if not index:
+        console.print("[red]✗[/red] Failed to fetch channel index")
+        console.print("[dim]Make sure the endpoint is accessible and contains data for this channel.[/dim]")
+        return
 
-    package_name_input = Prompt.ask("\nEnter package name (without version)")
+    console.print(f"[green]✓[/green] Loaded {len(index.root)} package mappings [dim]({cache_status})[/dim]\n")
 
-    # Find matching packages
-    matching_packages = {
-        name: info
-        for name, info in all_packages.items()
-        if package_name_input.lower() in name.lower()
-    }
+    # Step 2: Organize packages by conda name and version
+    # Index structure: {hash: MappingEntry}
+    # MappingEntry has: conda_name, package_name (with version-build), pypi info
+
+    packages_by_name: dict[str, dict[str, list[tuple[str, MappingEntry]]]] = {}
+    # Structure: {conda_name: {version: [(hash, entry)]}}
+
+    console.print("[yellow]Organizing packages...[/yellow]")
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("[green]Processing index...", total=None)
+
+        for pkg_hash, entry in index.root.items():
+            conda_name = entry.conda_name
+            # Extract version from package_name
+            # Format: package-version-build.tar.bz2 or .conda
+            pkg_filename = entry.package_name
+            # Remove extension
+            pkg_base = pkg_filename.replace(".tar.bz2", "").replace(".conda", "")
+            # Split by hyphens: package-version-build
+            parts = pkg_base.rsplit("-", 2)
+            if len(parts) >= 2:
+                pkg_version = parts[1]
+            else:
+                pkg_version = "unknown"
+
+            if conda_name not in packages_by_name:
+                packages_by_name[conda_name] = {}
+            if pkg_version not in packages_by_name[conda_name]:
+                packages_by_name[conda_name][pkg_version] = []
+
+            packages_by_name[conda_name][pkg_version].append((pkg_hash, entry))
+
+    console.print(f"[green]✓[/green] Found {len(packages_by_name)} unique package names\n")
+
+    # Step 3: Get package name if not provided
+    if package_name is None:
+        console.print("[yellow]Enter Package Name[/yellow]")
+        console.print("[dim]Tip: Enter a partial name to search[/dim]")
+        package_name = Prompt.ask("\nPackage name")
+
+    # Search for matching packages
+    # First try exact match
+    if package_name in packages_by_name:
+        matching_packages = {package_name: packages_by_name[package_name]}
+    else:
+        # Then try substring match
+        matching_packages = {
+            name: versions
+            for name, versions in packages_by_name.items()
+            if package_name.lower() in name.lower()
+        }
 
     if not matching_packages:
-        console.print(f"[red]✗[/red] No packages found matching '{package_name_input}'")
-
+        console.print(f"[red]✗[/red] No packages found matching '{package_name}'")
         # Show some suggestions
-        suggestions = [name for name in list(all_packages.keys())[:20]]
+        suggestions = sorted(packages_by_name.keys())[:20]
         console.print("\n[dim]Some available packages:[/dim]")
         for suggestion in suggestions:
             console.print(f"  - {suggestion}")
         return
 
-    if len(matching_packages) > 100:
-        console.print(
-            f"[yellow]⚠[/yellow] Found {len(matching_packages)} matching packages. Showing first 100."
-        )
+    if len(matching_packages) > 50:
+        console.print(f"[yellow]⚠[/yellow] Found {len(matching_packages)} matching packages. Showing first 50.")
         console.print("[dim]Be more specific to narrow down results.[/dim]\n")
-        matching_packages = dict(list(matching_packages.items())[:100])
+        matching_packages = dict(list(matching_packages.items())[:50])
 
-    # Group by base package name (remove version and build)
-    base_packages: dict[str, list[str]] = {}
-    for full_name in matching_packages.keys():
-        # Extract base name by removing version suffix
-        # e.g., "numpy-1.26.4-py311_0" -> "numpy"
-        parts = full_name.rsplit("-", 2)
-        if len(parts) >= 3:
-            base_name = parts[0]
-            if base_name not in base_packages:
-                base_packages[base_name] = []
-            base_packages[base_name].append(full_name)
-
-    if len(base_packages) > 1:
+    # If multiple matches, let user choose (unless in non-interactive mode)
+    if len(matching_packages) > 1 and version is None:
         console.print("\n[cyan]Found multiple packages:[/cyan]")
-        base_list = sorted(base_packages.keys())
-        for idx, base in enumerate(base_list, 1):
-            console.print(f"  {idx}. {base} ({len(base_packages[base])} versions)")
+        pkg_list = sorted(matching_packages.keys())
+        for idx, name in enumerate(pkg_list[:20], 1):
+            version_count = len(matching_packages[name])
+            console.print(f"  {idx}. {name} ({version_count} version{'s' if version_count > 1 else ''})")
+
+        if len(pkg_list) > 20:
+            console.print(f"  [dim]... and {len(pkg_list) - 20} more[/dim]")
 
         choice = Prompt.ask(
             "\nSelect package number",
-            choices=[str(i) for i in range(1, len(base_list) + 1)],
+            choices=[str(i) for i in range(1, min(len(pkg_list), 20) + 1)],
             default="1",
         )
-        selected_base = base_list[int(choice) - 1]
+        selected_package = pkg_list[int(choice) - 1]
     else:
-        selected_base = list(base_packages.keys())[0]
+        selected_package = list(matching_packages.keys())[0]
 
-    console.print(f"\n[green]✓[/green] Selected package: {selected_base}")
+    console.print(f"\n[green]✓[/green] Selected: {selected_package}\n")
 
-    # Step 3: Show versions
-    console.print("\n[yellow]Step 3: Select Version[/yellow]")
+    # Step 4: Show versions
+    versions_dict = matching_packages[selected_package]
 
-    package_versions = base_packages[selected_base]
+    if version is None:
+        console.print("[yellow]Available Versions[/yellow]")
+        sorted_versions = sorted(versions_dict.keys(), key=lambda v: _version_sort_key(v), reverse=True)
 
-    # Group by version (without build) and calculate total size
-    versions: dict[str, list[str]] = {}
-    version_sizes: dict[str, int] = {}
-    for full_name in package_versions:
-        parts = full_name.rsplit("-", 2)
-        if len(parts) >= 3:
-            version = parts[1]
-            if version not in versions:
-                versions[version] = []
-                version_sizes[version] = 0
-            versions[version].append(full_name)
+        # Show versions
+        for idx, ver in enumerate(sorted_versions[:30], 1):
+            build_count = len(versions_dict[ver])
+            console.print(f"  {idx}. {ver} ({build_count} build{'s' if build_count > 1 else ''})")
 
-            # Add up the size for this build
-            size = matching_packages[full_name].get("size", 0)
-            if isinstance(size, int):
-                version_sizes[version] += size
+        if len(sorted_versions) > 30:
+            console.print(f"  [dim]... and {len(sorted_versions) - 30} more versions[/dim]")
 
-    sorted_versions = sorted(versions.keys(), reverse=True)
-
-    # Show versions in pages
-    page_size = 20
-    current_page = 0
-
-    while True:
-        start_idx = current_page * page_size
-        end_idx = start_idx + page_size
-        page_versions = sorted_versions[start_idx:end_idx]
-
-        console.print(
-            f"\n[cyan]Available versions (page {current_page + 1}, showing latest first):[/cyan]"
-        )
-        for idx, version in enumerate(page_versions, 1):
-            build_count = len(versions[version])
-            total_size = version_sizes[version]
-            size_str = format_size(total_size) if total_size > 0 else "N/A"
-            console.print(
-                f"  {idx}. {version} ({build_count} build{'s' if build_count > 1 else ''}, {size_str})"
-            )
-
-        remaining = len(sorted_versions) - end_idx
-        if remaining > 0:
-            console.print(f"  [dim]... and {remaining} more versions[/dim]")
-
-        # Allow typing version directly or selecting by number or showing more
-        console.print("\n[dim]Options:[/dim]")
-        console.print("  - Type a number (1-20) to select from the list")
-        console.print("  - Type a version string directly (e.g., '1.26.4')")
-        if remaining > 0:
-            console.print("  - Type 'more' to see next page")
-        if current_page > 0:
-            console.print("  - Type 'back' to go to previous page")
-
-        version_choice = Prompt.ask("\nEnter your choice")
-
-        # Check if user wants more versions
-        if version_choice.lower() == "more" and remaining > 0:
-            current_page += 1
-            continue
-        elif version_choice.lower() == "back" and current_page > 0:
-            current_page -= 1
-            continue
+        version_choice = Prompt.ask("\nEnter version number or version string", default="1")
 
         # Check if it's a number
         if version_choice.isdigit():
             choice_num = int(version_choice)
-            if 1 <= choice_num <= len(page_versions):
-                selected_version = page_versions[choice_num - 1]
-                break
+            if 1 <= choice_num <= min(len(sorted_versions), 30):
+                version = sorted_versions[choice_num - 1]
             else:
-                console.print(
-                    f"[red]Invalid choice. Please enter 1-{len(page_versions)}[/red]"
-                )
-                continue
+                console.print(f"[red]Invalid choice[/red]")
+                return
+        else:
+            # Direct version string
+            if version_choice in versions_dict:
+                version = version_choice
+            else:
+                console.print(f"[red]Version '{version_choice}' not found[/red]")
+                return
 
-        # Check if it's a direct version string
-        if version_choice in versions:
-            selected_version = version_choice
-            break
+    console.print(f"\n[green]✓[/green] Selected version: {version}\n")
 
-        console.print(
-            f"[red]Version '{version_choice}' not found. Please try again.[/red]"
-        )
+    # Step 5: Display builds and their PyPI mappings
+    if version not in versions_dict:
+        console.print(f"[red]✗[/red] Version {version} not found")
+        return
 
-    console.print(f"\n[green]✓[/green] Selected version: {selected_version}")
+    builds = versions_dict[version]
+    console.print(f"[yellow]Found {len(builds)} build(s) for {selected_package}-{version}[/yellow]\n")
 
-    # Step 4: Display all builds
-    console.print("\n[yellow]Step 4: Build Information[/yellow]\n")
-
-    builds = versions[selected_version]
-
-    # Create table
-    table = Table(title=f"{selected_base}-{selected_version} Builds", show_header=True)
+    # Create table showing builds and PyPI mappings
+    table = Table(
+        title=f"{selected_package}-{version} Builds and PyPI Mappings",
+        show_header=True,
+    )
     table.add_column("#", style="dim", width=4)
     table.add_column("Build String", style="cyan")
-    table.add_column("Full Package Name", style="white")
-    table.add_column("Size", justify="right", style="green")
-    table.add_column("Timestamp", style="yellow")
+    table.add_column("Package Filename", style="white")
+    table.add_column("PyPI Package(s)", style="green")
+    table.add_column("PyPI Version(s)", style="yellow")
 
-    for idx, build_name in enumerate(sorted(builds), 1):
-        info = matching_packages[build_name]
-        size = info.get("size", "N/A")
-        if isinstance(size, int):
-            size_str = format_size(size)
-        else:
-            size_str = str(size)
-
-        timestamp = info.get("timestamp", "N/A")
-        if isinstance(timestamp, int):
-            from datetime import datetime
-
-            timestamp_str = datetime.fromtimestamp(timestamp / 1000).strftime(
-                "%Y-%m-%d"
-            )
-        else:
-            timestamp_str = str(timestamp)
-
+    for idx, (pkg_hash, entry) in enumerate(sorted(builds, key=lambda x: x[1].package_name), 1):
         # Extract build string
-        parts = build_name.rsplit("-", 2)
+        pkg_base = entry.package_name.replace(".tar.bz2", "").replace(".conda", "")
+        parts = pkg_base.rsplit("-", 2)
         build_string = parts[2] if len(parts) >= 3 else "unknown"
 
-        table.add_row(str(idx), build_string, build_name, size_str, timestamp_str)
+        # Format PyPI info
+        if entry.pypi_normalized_names:
+            pypi_pkgs = ", ".join(entry.pypi_normalized_names[:3])
+            if len(entry.pypi_normalized_names) > 3:
+                pypi_pkgs += f", ... (+{len(entry.pypi_normalized_names) - 3})"
+        else:
+            pypi_pkgs = "[dim]None[/dim]"
+
+        if entry.versions:
+            pypi_versions = ", ".join([f"{v}" for v in list(entry.versions.values())[:3]])
+            if len(entry.versions) > 3:
+                pypi_versions += f", ... (+{len(entry.versions) - 3})"
+        else:
+            pypi_versions = "[dim]N/A[/dim]"
+
+        table.add_row(
+            str(idx),
+            build_string,
+            entry.package_name,
+            pypi_pkgs,
+            pypi_versions,
+        )
 
     console.print(table)
 
-    # Ask which build to see PyPI mapping for
-    console.print("\n[yellow]Step 5: View PyPI Mapping (optional)[/yellow]")
-    console.print("\n[dim]Options:[/dim]")
-    console.print("  - Type 'all' to see aggregated mapping across all builds")
-    console.print("  - Type a build number to see mapping for specific build")
-    console.print("  - Type 'n' to skip")
+    # Summary
+    console.print(f"\n[green]✓[/green] Exploration complete!")
+    console.print(f"[dim]Package: {selected_package}, Version: {version}, Builds: {len(builds)}[/dim]\n")
 
-    mapping_choice = Prompt.ask("\nYour choice", default="all")
 
-    if mapping_choice.lower() == "n":
-        console.print("\n[dim]Skipping PyPI mapping view[/dim]")
+def _version_sort_key(version_str: str):
+    """Helper to sort versions, handling invalid versions."""
+    try:
+        return Version(version_str)
+    except InvalidVersion:
+        return version_str
+
+
+def explore_pypi_package(
+    channel: SupportedChannels | None = None,
+    base_url: str | None = None,
+    pypi_name: str | None = None,
+    version: str | None = None,
+):
+    """
+    Interactive PyPI → Conda package explorer (HTTP-based).
+
+    Interactive flow (when params not provided):
+    1. Select endpoint (production or local)
+    2. Select channel (conda-forge, pytorch, bioconda)
+    3. Enter PyPI package name
+    4. View all conda versions available
+    5. Optional: Drill down to specific version for details
+
+    Non-interactive mode (for testing):
+    Provide channel, base_url, pypi_name, and optionally version.
+
+    Args:
+        channel: Conda channel (if None, prompts interactively)
+        base_url: Base URL for HTTP requests (if None, prompts interactively)
+        pypi_name: PyPI package name
+        version: Specific PyPI version to view (optional)
+    """
+    console.print("\n[bold cyan]🔍 PyPI → Conda Package Explorer (HTTP)[/bold cyan]\n")
+
+    # Step 1: Select endpoint if not provided
+    if base_url is None:
+        base_url = select_endpoint_interactive()
+
+    console.print(f"\n[cyan]Endpoint:[/cyan] {base_url}")
+
+    # Step 2: Select channel if not provided
+    if channel is None:
+        console.print("\n[yellow]Select Channel[/yellow]")
+        console.print("1. conda-forge")
+        console.print("2. pytorch")
+        console.print("3. bioconda")
+
+        choice = Prompt.ask("\nSelect channel", choices=["1", "2", "3"], default="1")
+
+        if choice == "1":
+            channel = SupportedChannels.CONDA_FORGE
+        elif choice == "2":
+            channel = SupportedChannels.PYTORCH
+        else:
+            channel = SupportedChannels.BIOCONDA
+
+    console.print(f"[green]✓[/green] Using channel: {channel}")
+
+    # Step 3: Get PyPI package name if not provided
+    if pypi_name is None:
+        console.print("\n[yellow]Enter PyPI Package Name[/yellow]")
+        pypi_name = Prompt.ask("PyPI package name")
+
+    # Normalize the name
+    normalized_name = normalize_pypi_name(pypi_name)
+    if normalized_name != pypi_name:
+        console.print(f"[dim]Normalized to: {normalized_name}[/dim]")
+
+    console.print(f"\n[green]✓[/green] Looking up: {normalized_name}")
+
+    # Step 4: Fetch PyPI lookup data
+    with console.status("[bold green]Fetching PyPI → Conda mappings..."):
+        lookup = fetch_pypi_lookup(channel, normalized_name, base_url=base_url)
+
+    if not lookup:
+        console.print(f"\n[red]✗[/red] No conda packages found for '{normalized_name}' in {channel}")
+        console.print("[dim]This package may not be available in this channel.[/dim]")
         return
 
-    # Try different backends to get artifact info
-    backends = ["oci", "streamed", "libcfgraph"]
+    console.print(f"[green]✓[/green] Found {len(lookup.conda_versions)} PyPI versions in {channel}\n")
 
-    if mapping_choice.lower() == "all":
-        # Aggregate mappings across all builds
-        console.print(
-            f"\n[cyan]Fetching PyPI mappings for all {len(builds)} builds...[/cyan]\n"
-        )
+    # Step 5: Display versions
+    sorted_versions = sort_versions_descending(lookup.conda_versions)
 
-        all_mappings = []
-        failed_builds = []
-
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            console=console,
-        ) as progress:
-            task = progress.add_task("[green]Fetching artifacts...", total=len(builds))
-
-            for build_name in sorted(builds):
-                artifact = None
-                for backend in backends:
-                    try:
-                        artifact = get_artifact_info(
-                            subdir=subdir,
-                            artifact=build_name,
-                            backend=backend,
-                            channel=channel,
-                        )
-                        if artifact:
-                            break
-                    except Exception as e:
-                        logger.debug(f"Backend {backend} failed for {build_name}: {e}")
-                        continue
-
-                if artifact:
-                    mapping_entry = extract_artifact_mapping(artifact, build_name)
-                    all_mappings.append((build_name, mapping_entry))
-                else:
-                    failed_builds.append(build_name)
-
-                progress.advance(task)
-
-        console.print(
-            f"\n[green]✓[/green] Successfully fetched {len(all_mappings)}/{len(builds)} builds"
-        )
-
-        if failed_builds:
-            console.print(
-                f"[yellow]⚠[/yellow] Failed to fetch {len(failed_builds)} builds"
+    # If specific version requested, show only that
+    if version:
+        if version in lookup.conda_versions:
+            _display_single_pypi_version(
+                normalized_name,
+                version,
+                lookup.conda_versions[version],
+                channel,
+                base_url,
             )
-
-        # Aggregate the data
-        aggregated_pypi_packages: dict[
-            str, dict[str, list[str]]
-        ] = {}  # {pypi_name: {version: [build_names]}}
-        aggregated_direct_urls: dict[str, list[str]] = {}  # {url: [build_names]}
-        conda_package_name = None
-
-        for build_name, mapping in all_mappings:
-            if conda_package_name is None and mapping.conda_name:
-                conda_package_name = mapping.conda_name
-
-            if mapping.pypi_normalized_names and mapping.versions:
-                for pypi_name in mapping.pypi_normalized_names:
-                    if pypi_name not in aggregated_pypi_packages:
-                        aggregated_pypi_packages[pypi_name] = {}
-
-                    pypi_version: str | None = mapping.versions.get(pypi_name)
-                    if pypi_version:
-                        if pypi_version not in aggregated_pypi_packages[pypi_name]:
-                            aggregated_pypi_packages[pypi_name][pypi_version] = []
-                        # Extract just the build string
-                        parts = build_name.rsplit("-", 2)
-                        build_string = parts[2] if len(parts) >= 3 else build_name
-                        aggregated_pypi_packages[pypi_name][pypi_version].append(
-                            build_string
-                        )
-
-            if mapping.direct_url:
-                for url in mapping.direct_url:
-                    if url not in aggregated_direct_urls:
-                        aggregated_direct_urls[url] = []
-                    parts = build_name.rsplit("-", 2)
-                    build_string = parts[2] if len(parts) >= 3 else build_name
-                    aggregated_direct_urls[url].append(build_string)
-
-        # Display aggregated results
-        console.print(
-            f"\n[bold cyan]📦 Aggregated PyPI Mapping for {selected_base}-{selected_version}:[/bold cyan]\n"
-        )
-
-        # Overview
-        overview_table = Table(
-            title="Overview", show_header=True, header_style="bold magenta"
-        )
-        overview_table.add_column("Field", style="cyan", width=20)
-        overview_table.add_column("Value", style="white")
-
-        overview_table.add_row("Conda Package", conda_package_name or "Unknown")
-        overview_table.add_row("Version", selected_version)
-        overview_table.add_row("Total Builds", str(len(builds)))
-        overview_table.add_row(
-            "PyPI Packages Found", str(len(aggregated_pypi_packages))
-        )
-
-        console.print(overview_table)
-
-        # Create a single unified table with all PyPI mappings
-        if aggregated_pypi_packages:
-            console.print()
-            mapping_table = Table(
-                title="PyPI Package Mappings",
-                show_header=True,
-                header_style="bold magenta",
-            )
-            mapping_table.add_column("PyPI Package", style="cyan", no_wrap=True)
-            mapping_table.add_column("Version", style="green", no_wrap=True)
-            mapping_table.add_column("Conda Builds", style="white")
-
-            # Flatten the nested structure into rows
-            for pypi_name in sorted(aggregated_pypi_packages.keys()):
-                versions = aggregated_pypi_packages[pypi_name]
-                for version in sorted(versions.keys()):
-                    build_strings = versions[version]
-
-                    # Format builds display
-                    if len(build_strings) <= 5:
-                        builds_display = ", ".join(sorted(build_strings))
-                    else:
-                        builds_display = f"{', '.join(sorted(build_strings)[:5])}, ... (+{len(build_strings)-5} more)"
-
-                    mapping_table.add_row(pypi_name, version, builds_display)
-
-            console.print(mapping_table)
-
-        # Direct URLs
-        if aggregated_direct_urls:
-            url_table = Table(
-                title="Direct URLs (not on PyPI index)",
-                show_header=True,
-                header_style="bold magenta",
-            )
-            url_table.add_column("URL", style="blue")
-            url_table.add_column("Builds", style="cyan")
-
-            for url, build_strings in sorted(aggregated_direct_urls.items()):
-                if len(build_strings) <= 3:
-                    builds_display = ", ".join(sorted(build_strings))
-                else:
-                    builds_display = f"{', '.join(sorted(build_strings)[:3])}, ... (+{len(build_strings)-3} more)"
-
-                url_table.add_row(url, builds_display)
-
-            console.print(url_table)
-
-        # Show note if no PyPI mappings found
-        if not aggregated_pypi_packages and not aggregated_direct_urls:
-            console.print(
-                "\n[yellow]⚠ Note: No PyPI packages found in any of the builds[/yellow]"
-            )
-
-    else:
-        # Single build view
-        if not mapping_choice.isdigit() or not (
-            1 <= int(mapping_choice) <= len(builds)
-        ):
-            console.print(
-                f"[red]Invalid choice. Please select 1-{len(builds)} or 'all'[/red]"
-            )
-            return
-
-        build_choice_idx = int(mapping_choice)
-        selected_build = sorted(builds)[build_choice_idx - 1]
-
-        console.print(f"\n[cyan]Fetching PyPI mapping for {selected_build}...[/cyan]")
-
-        artifact = None
-
-        with console.status("[bold green]Fetching artifact info..."):
-            for backend in backends:
-                try:
-                    artifact = get_artifact_info(
-                        subdir=subdir,
-                        artifact=selected_build,
-                        backend=backend,
-                        channel=channel,
-                    )
-                    if artifact:
-                        console.print(f"[dim]Using backend: {backend}[/dim]")
-                        break
-                except Exception as e:
-                    logger.debug(f"Backend {backend} failed: {e}")
-                    continue
-
-        if artifact:
-            mapping_entry = extract_artifact_mapping(artifact, selected_build)
-
-            # Display mapping in a rich table
-            console.print(
-                f"\n[bold cyan]📦 PyPI Mapping for {selected_build}:[/bold cyan]\n"
-            )
-
-            # Create overview table
-            overview_table = Table(
-                title="Package Overview", show_header=True, header_style="bold magenta"
-            )
-            overview_table.add_column("Field", style="cyan", width=20)
-            overview_table.add_column("Value", style="white")
-
-            overview_table.add_row("Conda Package", mapping_entry.conda_name)
-            overview_table.add_row("Package Filename", mapping_entry.package_name)
-            overview_table.add_row(
-                "PyPI Package(s)",
-                ", ".join(mapping_entry.pypi_normalized_names)
-                if mapping_entry.pypi_normalized_names
-                else "None",
-            )
-
-            console.print(overview_table)
-
-            # If there are PyPI packages, show version mapping
-            if mapping_entry.pypi_normalized_names and mapping_entry.versions:
-                console.print()
-                versions_table = Table(
-                    title="PyPI Version Mapping",
-                    show_header=True,
-                    header_style="bold magenta",
-                )
-                versions_table.add_column("PyPI Package", style="cyan")
-                versions_table.add_column("Version", style="green")
-
-                for pypi_name, version in mapping_entry.versions.items():
-                    versions_table.add_row(pypi_name, version)
-
-                console.print(versions_table)
-
-            # If there are direct URLs, show them
-            if mapping_entry.direct_url:
-                console.print()
-                url_table = Table(
-                    title="Direct URLs (not on PyPI index)",
-                    show_header=True,
-                    header_style="bold magenta",
-                )
-                url_table.add_column("#", style="dim", width=4)
-                url_table.add_column("URL", style="blue")
-
-                for idx, url in enumerate(mapping_entry.direct_url, 1):
-                    url_table.add_row(str(idx), url)
-
-                console.print(url_table)
-
-            # Show a note if no PyPI mapping was found
-            if not mapping_entry.pypi_normalized_names:
-                console.print(
-                    "\n[yellow]⚠ Note: This package does not appear to contain any PyPI packages[/yellow]"
-                )
-
         else:
-            console.print("[red]✗[/red] Could not fetch artifact info from any backend")
+            console.print(f"[red]✗[/red] Version {version} not found")
+            console.print(f"[dim]Available versions: {', '.join([v for v, _ in sorted_versions[:5]])}...[/dim]")
+        return
+
+    # Display all versions in a table
+    table = Table(
+        title=f"PyPI Package: {normalized_name} (Channel: {channel})",
+        show_header=True,
+    )
+    table.add_column("#", style="dim", width=4)
+    table.add_column("PyPI Version", style="green")
+    table.add_column("Conda Packages", style="cyan")
+
+    for idx, (pypi_version, conda_packages) in enumerate(sorted_versions, 1):
+        # Format conda packages list
+        if len(conda_packages) <= 3:
+            packages_str = ", ".join(conda_packages)
+        else:
+            packages_str = f"{', '.join(conda_packages[:3])}, ... (+{len(conda_packages)-3} more)"
+
+        table.add_row(str(idx), pypi_version, packages_str)
+
+    console.print(table)
+
+    # Step 6: Optional drill-down
+    console.print("\n[yellow]View Details (optional)[/yellow]")
+    console.print("[dim]Options:[/dim]")
+    console.print("  - Type a number to view that version's details")
+    console.print("  - Type 'n' to exit")
+
+    detail_choice = Prompt.ask("\nYour choice", default="n")
+
+    if detail_choice.lower() == "n":
+        console.print("\n[dim]Exiting explorer[/dim]")
+        return
+
+    # Check if it's a number
+    if detail_choice.isdigit():
+        choice_num = int(detail_choice)
+        if 1 <= choice_num <= len(sorted_versions):
+            selected_version, conda_packages = sorted_versions[choice_num - 1]
+            _display_single_pypi_version(
+                normalized_name,
+                selected_version,
+                conda_packages,
+                channel,
+                base_url,
+            )
+        else:
+            console.print(f"[red]Invalid choice. Please enter 1-{len(sorted_versions)}[/red]")
+
+
+def _display_single_pypi_version(
+    pypi_name: str,
+    pypi_version: str,
+    conda_packages: list[str],
+    channel: SupportedChannels,
+    base_url: str,
+):
+    """
+    Display detailed information about conda packages for a specific PyPI version.
+
+    This optionally fetches hash mappings to show build details.
+    """
+    console.print(f"\n[bold cyan]📦 Details for {pypi_name}=={pypi_version}[/bold cyan]\n")
+
+    # Create table
+    table = Table(title=f"Conda Packages (Channel: {channel})", show_header=True)
+    table.add_column("#", style="dim", width=4)
+    table.add_column("Conda Package Name", style="cyan")
+
+    for idx, conda_pkg in enumerate(conda_packages, 1):
+        table.add_row(str(idx), conda_pkg)
+
+    console.print(table)
+
+    console.print(f"\n[green]✓[/green] {len(conda_packages)} conda package(s) provide {pypi_name}=={pypi_version}")
+
+    # Note about hash lookups
+    console.print("\n[dim]Note: To view build details (size, timestamp, etc.), you need the package hash.[/dim]")
+    console.print("[dim]Hash lookups can be added here in a future enhancement.[/dim]")

@@ -1,105 +1,145 @@
 """
-Demo script showing the Conda -> PyPI package explorer functionality.
+Demo script showing the HTTP-based Conda <-> PyPI package explorer functionality.
 
-To actually use the interactive explorer, run:
-    pixi run parselmouth explore
+This demonstrates both:
+1. Conda -> PyPI explorer (currently simplified)
+2. PyPI -> Conda explorer (fully functional)
 
-This script demonstrates the data flow without interactive prompts.
+To use the interactive explorers, run:
+    pixi run parselmouth explore-pypi              # PyPI -> Conda (interactive)
+    pixi run parselmouth explore                   # Conda -> PyPI (interactive)
+
+This script demonstrates non-interactive usage for testing.
 """
 
 from parselmouth.internals.channels import SupportedChannels
-from parselmouth.internals.conda_forge import get_all_packages_by_subdir
+from parselmouth.internals.package_explorer import explore_pypi_package
+from parselmouth.internals.mapping_http_client import fetch_pypi_lookup
 from rich.console import Console
 from rich.table import Table
 
 console = Console()
 
+# Endpoint URLs
+LOCAL_MINIO = "http://localhost:9000/conda"
+PRODUCTION = "https://conda-mapping.prefix.dev"
 
-def demo_package_data():
+
+def demo_pypi_to_conda_http():
     """
-    Demonstrate fetching and displaying Conda -> PyPI package data.
+    Demonstrate PyPI -> Conda lookups via HTTP.
+
+    This is the main explorer that works with HTTP endpoints.
     """
-    console.print("\n[bold cyan]🔍 Conda → PyPI Package Explorer Demo[/bold cyan]\n")
+    console.print("\n[bold cyan]🔍 PyPI → Conda Explorer Demo (HTTP)[/bold cyan]\n")
+    console.print("[yellow]Testing PyPI -> Conda lookup via HTTP...[/yellow]\n")
 
-    # Step 1: Fetch data for a subdir
-    subdir = "noarch"
-    console.print(f"[yellow]Fetching packages from {subdir}...[/yellow]")
+    # Example 1: Look up 'requests' in conda-forge
+    pypi_name = "requests"
+    channel = SupportedChannels.CONDA_FORGE
 
-    with console.status("[bold green]Loading repodata..."):
-        repodatas = get_all_packages_by_subdir(subdir, SupportedChannels.CONDA_FORGE)
+    console.print(f"[cyan]Looking up '{pypi_name}' in {channel}...[/cyan]")
 
-    # Flatten all packages
-    all_packages = {}
-    for label, packages in repodatas.items():
-        all_packages.update(packages)
+    # Try production endpoint
+    console.print(f"[dim]Using endpoint: {PRODUCTION}[/dim]\n")
 
-    console.print(f"[green]✓[/green] Loaded {len(all_packages)} packages\n")
+    with console.status("[bold green]Fetching PyPI -> Conda mappings..."):
+        lookup = fetch_pypi_lookup(channel, pypi_name, base_url=PRODUCTION)
 
-    # Step 2: Find a specific package (e.g., requests)
-    package_name = "requests"
-    matching = {
-        name: info
-        for name, info in all_packages.items()
-        if name.startswith(package_name + "-")
-    }
+    if lookup:
+        console.print(f"[green]✓[/green] Found {len(lookup.conda_versions)} PyPI versions\n")
 
-    console.print(f"[cyan]Found {len(matching)} builds of '{package_name}'[/cyan]\n")
-
-    # Step 3: Group by version
-    versions = {}
-    for full_name in matching.keys():
-        parts = full_name.rsplit("-", 2)
-        if len(parts) >= 3:
-            version = parts[1]
-            if version not in versions:
-                versions[version] = []
-            versions[version].append(full_name)
-
-    # Step 4: Show a table for one version
-    if versions:
-        # Pick the first version
-        sample_version = sorted(versions.keys(), reverse=True)[0]
-        builds = versions[sample_version]
-
-        console.print(
-            f"[yellow]Showing builds for version {sample_version}:[/yellow]\n"
+        # Show a sample of versions
+        table = Table(
+            title=f"Sample Versions for {pypi_name}",
+            show_header=True,
         )
+        table.add_column("PyPI Version", style="green")
+        table.add_column("Conda Packages", style="cyan")
 
-        table = Table(title=f"{package_name}-{sample_version} Builds", show_header=True)
-        table.add_column("#", style="dim", width=4)
-        table.add_column("Build String", style="cyan")
-        table.add_column("Full Package Name", style="white")
-        table.add_column("Size", justify="right", style="green")
-
-        for idx, build_name in enumerate(sorted(builds)[:10], 1):  # Show first 10
-            info = matching[build_name]
-            size = info.get("size", "N/A")
-            if isinstance(size, int):
-                if size > 1024 * 1024:
-                    size_str = f"{size / (1024 * 1024):.1f} MB"
-                elif size > 1024:
-                    size_str = f"{size / 1024:.1f} KB"
-                else:
-                    size_str = f"{size} B"
+        # Show first 10 versions
+        versions = sorted(lookup.conda_versions.keys(), reverse=True)[:10]
+        for version in versions:
+            conda_pkgs = lookup.conda_versions[version]
+            if len(conda_pkgs) <= 3:
+                pkgs_str = ", ".join(conda_pkgs)
             else:
-                size_str = str(size)
+                pkgs_str = f"{', '.join(conda_pkgs[:3])}, ... (+{len(conda_pkgs)-3} more)"
 
-            parts = build_name.rsplit("-", 2)
-            build_string = parts[2] if len(parts) >= 3 else "unknown"
-
-            table.add_row(str(idx), build_string, build_name, size_str)
+            table.add_row(version, pkgs_str)
 
         console.print(table)
-        console.print(
-            f"\n[dim]... and {len(builds) - 10} more builds[/dim]"
-            if len(builds) > 10
-            else ""
-        )
+
+        if len(lookup.conda_versions) > 10:
+            console.print(f"\n[dim]... and {len(lookup.conda_versions) - 10} more versions[/dim]")
+    else:
+        console.print(f"[red]✗[/red] No mappings found for '{pypi_name}'")
 
     console.print("\n[green]✓[/green] Demo complete!\n")
-    console.print("[cyan]To use the interactive explorer, run:[/cyan]")
-    console.print("    [bold]pixi run parselmouth explore[/bold]\n")
+
+
+def demo_non_interactive_usage():
+    """
+    Demonstrate non-interactive usage for automated testing.
+    """
+    console.print("\n[bold cyan]📋 Non-Interactive Usage Examples[/bold cyan]\n")
+
+    console.print("[yellow]Example 1: PyPI -> Conda with all parameters[/yellow]")
+    console.print("[dim]Command:[/dim]")
+    console.print("  parselmouth explore-pypi --endpoint production --channel conda-forge --pypi-name numpy\n")
+
+    console.print("[yellow]Example 2: View specific version[/yellow]")
+    console.print("[dim]Command:[/dim]")
+    console.print("  parselmouth explore-pypi --endpoint local --channel conda-forge --pypi-name requests --version 2.31.0\n")
+
+    console.print("[yellow]Example 3: Using local MinIO[/yellow]")
+    console.print("[dim]Prerequisites:[/dim]")
+    console.print("  1. Start MinIO: docker-compose up -d")
+    console.print("  2. Run test pipeline: pixi run test-pipeline")
+    console.print("[dim]Command:[/dim]")
+    console.print("  parselmouth explore-pypi --endpoint local --channel pytorch --pypi-name torch\n")
+
+
+def demo_interactive_help():
+    """
+    Show how to use the interactive explorers.
+    """
+    console.print("\n[bold cyan]💡 Interactive Explorer Usage[/bold cyan]\n")
+
+    console.print("[yellow]PyPI → Conda Explorer (Recommended)[/yellow]")
+    console.print("This explorer is fully functional with HTTP endpoints:\n")
+    console.print("  [bold]pixi run parselmouth explore-pypi[/bold]")
+    console.print("  [dim]or[/dim]")
+    console.print("  [bold]pixi run parselmouth explore-pypi --endpoint local[/bold]\n")
+
+    console.print("[yellow]Conda → PyPI Explorer[/yellow]")
+    console.print("Currently simplified - requires full index support:\n")
+    console.print("  [bold]pixi run parselmouth explore[/bold]")
+    console.print("  [dim](Note: Full browsing not yet implemented for HTTP-only mode)[/dim]\n")
+
+
+def main():
+    """
+    Run all demos.
+    """
+    console.print("\n" + "="*70)
+    console.print("[bold]Parselmouth HTTP-Based Explorer Demos[/bold]")
+    console.print("="*70)
+
+    # Demo 1: PyPI -> Conda HTTP lookups
+    demo_pypi_to_conda_http()
+
+    # Demo 2: Non-interactive usage
+    demo_non_interactive_usage()
+
+    # Demo 3: Interactive help
+    demo_interactive_help()
+
+    console.print("\n[cyan]For more information, see:[/cyan]")
+    console.print("  - README.md")
+    console.print("  - docs/LOCAL_TESTING.md")
+    console.print()
 
 
 if __name__ == "__main__":
-    demo_package_data()
+    main()

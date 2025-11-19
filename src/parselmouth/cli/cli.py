@@ -208,24 +208,221 @@ def remove(
 @app.command()
 def explore(
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+    endpoint: str = typer.Option(
+        None,
+        help="Endpoint to use: 'production' or 'local' (interactive prompt if not specified)",
+    ),
+    subdir: str = typer.Option(
+        None,
+        help="Platform/subdir for non-interactive mode (e.g., 'linux-64', 'noarch')",
+    ),
+    package_name: str = typer.Option(
+        None,
+        "--package-name",
+        help="Package name for non-interactive mode",
+    ),
+    version: str = typer.Option(
+        None,
+        help="Package version for non-interactive mode",
+    ),
+    build: str = typer.Option(
+        None,
+        help="Build string for non-interactive mode",
+    ),
 ):
     """
-    Interactive Conda -> PyPI package explorer with rich interface.
+    Interactive Conda -> PyPI package explorer (HTTP-based).
 
     This provides an interactive way to explore conda packages and discover
-    their corresponding PyPI mappings:
+    their corresponding PyPI mappings via HTTP endpoints (production or local MinIO).
 
-    1. Select platform/subdir (linux-64, osx-arm64, etc.)
-    2. Search for conda packages (with suggestions)
-    3. Browse versions (with pagination and direct input)
-    4. View build details in a table
-    5. View PyPI mapping:
-       - Aggregated across all builds (default)
-       - For a specific build
-       - Or skip
+    INTERACTIVE MODE (default):
+    1. Select endpoint (production or local MinIO)
+    2. NOTE: Full conda browsing not yet implemented with HTTP-only
+    3. Use PyPI explorer or direct hash lookups for now
 
-    Note: This explores the Conda -> PyPI direction. A PyPI -> Conda explorer
-    will be available in the future.
+    NON-INTERACTIVE MODE (for testing):
+    Provide --endpoint, --package-name, --version to skip prompts.
+
+    Examples:
+      # Interactive
+      parselmouth explore --endpoint local
+
+      # Non-interactive (testing)
+      parselmouth explore --endpoint local --package-name numpy --version 1.26.4
     """
+    # Convert endpoint string to base_url
+    base_url = None
+    if endpoint == "production":
+        base_url = "https://conda-mapping.prefix.dev"
+    elif endpoint == "local":
+        base_url = "http://localhost:9000/conda"
+    elif endpoint is not None:
+        typer.echo(f"Invalid endpoint: {endpoint}. Use 'production' or 'local'.")
+        raise typer.Exit(1)
 
-    explore_package(channel=channel)
+    explore_package(
+        channel=channel,
+        base_url=base_url,
+        subdir=subdir,
+        package_name=package_name,
+        version=version,
+        build=build,
+    )
+
+
+@app.command()
+def explore_pypi(
+    endpoint: str = typer.Option(
+        None,
+        help="Endpoint to use: 'production' or 'local' (interactive prompt if not specified)",
+    ),
+    channel: SupportedChannels = typer.Option(
+        None,
+        help="Conda channel (interactive prompt if not specified)",
+    ),
+    pypi_name: str = typer.Option(
+        None,
+        "--pypi-name",
+        help="PyPI package name for non-interactive mode",
+    ),
+    version: str = typer.Option(
+        None,
+        help="PyPI version for non-interactive mode",
+    ),
+):
+    """
+    Interactive PyPI -> Conda package explorer (HTTP-based).
+
+    This provides an interactive way to explore PyPI packages and discover
+    which conda versions are available across different channels.
+
+    INTERACTIVE MODE (default):
+    1. Select endpoint (production or local MinIO)
+    2. Select conda channel (conda-forge, pytorch, bioconda)
+    3. Enter PyPI package name
+    4. View all available conda versions
+    5. Optional: Drill down to specific version for details
+
+    NON-INTERACTIVE MODE (for testing):
+    Provide --endpoint, --channel, --pypi-name to skip prompts.
+
+    Examples:
+      # Interactive
+      parselmouth explore-pypi
+
+      # Interactive with local MinIO
+      parselmouth explore-pypi --endpoint local
+
+      # Non-interactive (testing)
+      parselmouth explore-pypi --endpoint local --channel conda-forge --pypi-name requests
+
+      # View specific version
+      parselmouth explore-pypi --endpoint production --channel conda-forge --pypi-name numpy --version 1.26.4
+    """
+    from parselmouth.internals.package_explorer import explore_pypi_package
+
+    # Convert endpoint string to base_url
+    base_url = None
+    if endpoint == "production":
+        base_url = "https://conda-mapping.prefix.dev"
+    elif endpoint == "local":
+        base_url = "http://localhost:9000/conda"
+    elif endpoint is not None:
+        typer.echo(f"Invalid endpoint: {endpoint}. Use 'production' or 'local'.")
+        raise typer.Exit(1)
+
+    explore_pypi_package(
+        channel=channel,
+        base_url=base_url,
+        pypi_name=pypi_name,
+        version=version,
+    )
+
+
+@app.command()
+def cache_info():
+    """
+    Show information about cached channel indices.
+
+    Displays cache location, size, and metadata for all cached index files.
+    """
+    from parselmouth.internals.index_cache import get_cache_dir, get_cache_info
+    from datetime import datetime
+
+    cache_dir = get_cache_dir()
+    typer.echo(f"\n📁 Cache directory: {cache_dir}\n")
+
+    info = get_cache_info()
+
+    if not info:
+        typer.echo("No cached indices found.\n")
+        return
+
+    typer.echo(f"Found {len(info)} cached index file(s):\n")
+
+    for filename, data in sorted(info.items()):
+        typer.echo(f"  📦 {filename}")
+        typer.echo(f"     Size: {data['size_mb']:.2f} MB ({data['size_bytes']:,} bytes)")
+
+        if mtime := data.get("modified_time"):
+            dt = datetime.fromtimestamp(mtime)
+            typer.echo(f"     Modified: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+
+        if etag := data.get("etag"):
+            typer.echo(f"     ETag: {etag[:50]}..." if len(etag) > 50 else f"     ETag: {etag}")
+
+        if last_mod := data.get("last_modified"):
+            typer.echo(f"     Last-Modified: {last_mod}")
+
+        typer.echo()
+
+    total_size_mb = sum(d["size_mb"] for d in info.values())
+    typer.echo(f"Total cache size: {total_size_mb:.2f} MB\n")
+
+
+@app.command()
+def cache_clear(
+    channel: SupportedChannels = typer.Option(
+        None,
+        help="Clear cache for specific channel only",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Skip confirmation prompt",
+    ),
+):
+    """
+    Clear cached channel indices.
+
+    By default, clears all cached indices. Use --channel to clear only a specific channel.
+    """
+    from parselmouth.internals.index_cache import clear_cache, get_cache_info
+
+    # Show what will be cleared
+    info = get_cache_info()
+
+    if not info:
+        typer.echo("No cached indices to clear.\n")
+        return
+
+    if channel:
+        typer.echo(f"Will clear cache for channel: {channel}\n")
+    else:
+        typer.echo("Will clear ALL cached indices:\n")
+        for filename, data in info.items():
+            typer.echo(f"  - {filename} ({data['size_mb']:.2f} MB)")
+        typer.echo()
+
+    # Confirm unless --force
+    if not force:
+        confirm = typer.confirm("Are you sure you want to clear the cache?")
+        if not confirm:
+            typer.echo("Cancelled.")
+            return
+
+    # Clear cache
+    removed = clear_cache(channel)
+    typer.echo(f"\n✓ Cleared {removed} cached index file(s).\n")
