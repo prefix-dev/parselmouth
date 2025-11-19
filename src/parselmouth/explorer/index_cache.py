@@ -13,7 +13,7 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Callable
 
 import requests
 
@@ -113,7 +113,7 @@ def fetch_channel_index_cached(
     channel: SupportedChannels,
     base_url: str,
     timeout: int = 60,
-    progress_callback: callable = None,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> tuple[Optional[IndexMapping], str]:
     """
     Fetch channel index with caching support.
@@ -280,26 +280,28 @@ def clear_cache(channel: Optional[SupportedChannels] = None):
     """
     cache_dir = get_cache_dir()
 
+    patterns: list[str] = []
     if channel:
-        # Clear specific channel
-        pattern = f"index_{channel}_*.json"
+        patterns.append(f"index_{channel}_*.json")
+        patterns.append(f"catalog_{channel}_*.json")
     else:
-        # Clear all
-        pattern = "index_*.json"
+        patterns.append("index_*.json")
+        patterns.append("catalog_*.json")
 
     removed_count = 0
-    for file_path in cache_dir.glob(pattern):
-        try:
-            file_path.unlink()
-            # Also remove metadata file
-            meta_path = file_path.with_suffix(".meta")
-            if meta_path.exists():
-                meta_path.unlink()
-            removed_count += 1
-        except OSError as e:
-            logger.warning(f"Failed to remove cache file {file_path}: {e}")
+    for pattern in patterns:
+        for file_path in cache_dir.glob(pattern):
+            try:
+                file_path.unlink()
+                if file_path.name.startswith("index_"):
+                    meta_path = file_path.with_suffix(".meta")
+                    if meta_path.exists():
+                        meta_path.unlink()
+                removed_count += 1
+            except OSError as e:
+                logger.warning(f"Failed to remove cache file {file_path}: {e}")
 
-    logger.info(f"Removed {removed_count} cached index file(s)")
+    logger.info(f"Removed {removed_count} cached file(s)")
     return removed_count
 
 

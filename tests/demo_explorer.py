@@ -13,8 +13,7 @@ This script demonstrates non-interactive usage for testing.
 """
 
 from parselmouth.internals.channels import SupportedChannels
-from parselmouth.internals.package_explorer import explore_pypi_package
-from parselmouth.internals.mapping_http_client import fetch_pypi_lookup
+from parselmouth.explorer.http_client import fetch_pypi_lookup
 from rich.console import Console
 from rich.table import Table
 
@@ -47,7 +46,9 @@ def demo_pypi_to_conda_http():
         lookup = fetch_pypi_lookup(channel, pypi_name, base_url=PRODUCTION)
 
     if lookup:
-        console.print(f"[green]✓[/green] Found {len(lookup.conda_versions)} PyPI versions\n")
+        console.print(
+            f"[green]✓[/green] Found {len(lookup.conda_versions)} PyPI versions\n"
+        )
 
         # Show a sample of versions
         table = Table(
@@ -64,14 +65,18 @@ def demo_pypi_to_conda_http():
             if len(conda_pkgs) <= 3:
                 pkgs_str = ", ".join(conda_pkgs)
             else:
-                pkgs_str = f"{', '.join(conda_pkgs[:3])}, ... (+{len(conda_pkgs)-3} more)"
+                pkgs_str = (
+                    f"{', '.join(conda_pkgs[:3])}, ... (+{len(conda_pkgs)-3} more)"
+                )
 
             table.add_row(version, pkgs_str)
 
         console.print(table)
 
         if len(lookup.conda_versions) > 10:
-            console.print(f"\n[dim]... and {len(lookup.conda_versions) - 10} more versions[/dim]")
+            console.print(
+                f"\n[dim]... and {len(lookup.conda_versions) - 10} more versions[/dim]"
+            )
     else:
         console.print(f"[red]✗[/red] No mappings found for '{pypi_name}'")
 
@@ -86,18 +91,24 @@ def demo_non_interactive_usage():
 
     console.print("[yellow]Example 1: PyPI -> Conda with all parameters[/yellow]")
     console.print("[dim]Command:[/dim]")
-    console.print("  parselmouth explore-pypi --endpoint production --channel conda-forge --pypi-name numpy\n")
+    console.print(
+        "  parselmouth explore-pypi --endpoint production --channel conda-forge --pypi-name numpy\n"
+    )
 
     console.print("[yellow]Example 2: View specific version[/yellow]")
     console.print("[dim]Command:[/dim]")
-    console.print("  parselmouth explore-pypi --endpoint local --channel conda-forge --pypi-name requests --version 2.31.0\n")
+    console.print(
+        "  parselmouth explore-pypi --endpoint local --channel conda-forge --pypi-name requests --version 2.31.0\n"
+    )
 
     console.print("[yellow]Example 3: Using local MinIO[/yellow]")
     console.print("[dim]Prerequisites:[/dim]")
     console.print("  1. Start MinIO: docker-compose up -d")
     console.print("  2. Run test pipeline: pixi run test-pipeline")
     console.print("[dim]Command:[/dim]")
-    console.print("  parselmouth explore-pypi --endpoint local --channel pytorch --pypi-name torch\n")
+    console.print(
+        "  parselmouth explore-pypi --endpoint local --channel pytorch --pypi-name torch\n"
+    )
 
 
 def demo_interactive_help():
@@ -115,16 +126,18 @@ def demo_interactive_help():
     console.print("[yellow]Conda → PyPI Explorer[/yellow]")
     console.print("Currently simplified - requires full index support:\n")
     console.print("  [bold]pixi run parselmouth explore[/bold]")
-    console.print("  [dim](Note: Full browsing not yet implemented for HTTP-only mode)[/dim]\n")
+    console.print(
+        "  [dim](Note: Full browsing not yet implemented for HTTP-only mode)[/dim]\n"
+    )
 
 
 def main():
     """
     Run all demos.
     """
-    console.print("\n" + "="*70)
+    console.print("\n" + "=" * 70)
     console.print("[bold]Parselmouth HTTP-Based Explorer Demos[/bold]")
-    console.print("="*70)
+    console.print("=" * 70)
 
     # Demo 1: PyPI -> Conda HTTP lookups
     demo_pypi_to_conda_http()

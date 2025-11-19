@@ -6,17 +6,18 @@ import tarfile
 from ruamel import yaml
 from typing import Generator, Tuple
 import logging
+import tempfile
+import io
+import zipfile
+import zstandard as zstd
+from urllib.parse import urljoin
+
 import conda_forge_metadata.artifact_info
 from conda_forge_metadata.artifact_info.info_json import (
     get_artifact_info_as_json,
     _extract_read,
 )
 from conda_forge_metadata.types import ArtifactData
-from urllib.parse import urljoin
-import tempfile
-import io
-import zipfile
-import zstandard as zstd
 
 from parselmouth.internals.channels import ChannelUrls, SupportedChannels
 from parselmouth.internals.http_utils import get_global_session

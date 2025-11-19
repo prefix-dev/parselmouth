@@ -10,7 +10,7 @@ from parselmouth.internals.legacy_mapping import main as legacy_mapping_main
 from parselmouth.internals.mapping_transformer import main as mapping_transformer_main
 from parselmouth.internals.relations_updater import main as relations_updater_main
 from parselmouth.internals.remover import main as remover_main
-from parselmouth.internals.package_explorer import explore_package
+from parselmouth.explorer import explore_package
 
 from parselmouth.internals.channels import SupportedChannels
 
@@ -320,7 +320,7 @@ def explore_pypi(
       # View specific version
       parselmouth explore-pypi --endpoint production --channel conda-forge --pypi-name numpy --version 1.26.4
     """
-    from parselmouth.internals.package_explorer import explore_pypi_package
+    from parselmouth.explorer import explore_pypi_package
 
     # Convert endpoint string to base_url
     base_url = None
@@ -347,7 +347,7 @@ def cache_info():
 
     Displays cache location, size, and metadata for all cached index files.
     """
-    from parselmouth.internals.index_cache import get_cache_dir, get_cache_info
+    from parselmouth.explorer.index_cache import get_cache_dir, get_cache_info
     from datetime import datetime
 
     cache_dir = get_cache_dir()
@@ -363,14 +363,18 @@ def cache_info():
 
     for filename, data in sorted(info.items()):
         typer.echo(f"  📦 {filename}")
-        typer.echo(f"     Size: {data['size_mb']:.2f} MB ({data['size_bytes']:,} bytes)")
+        typer.echo(
+            f"     Size: {data['size_mb']:.2f} MB ({data['size_bytes']:,} bytes)"
+        )
 
         if mtime := data.get("modified_time"):
             dt = datetime.fromtimestamp(mtime)
             typer.echo(f"     Modified: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
 
         if etag := data.get("etag"):
-            typer.echo(f"     ETag: {etag[:50]}..." if len(etag) > 50 else f"     ETag: {etag}")
+            typer.echo(
+                f"     ETag: {etag[:50]}..." if len(etag) > 50 else f"     ETag: {etag}"
+            )
 
         if last_mod := data.get("last_modified"):
             typer.echo(f"     Last-Modified: {last_mod}")
@@ -399,7 +403,7 @@ def cache_clear(
 
     By default, clears all cached indices. Use --channel to clear only a specific channel.
     """
-    from parselmouth.internals.index_cache import clear_cache, get_cache_info
+    from parselmouth.explorer.index_cache import clear_cache, get_cache_info
 
     # Show what will be cleared
     info = get_cache_info()
