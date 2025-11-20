@@ -6,7 +6,13 @@ import hashlib
 import json
 from dataclasses import dataclass
 
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+)
 
 from parselmouth.internals.channels import SupportedChannels
 from .index_cache import get_cache_dir
@@ -24,7 +30,9 @@ class PackageCatalog:
     packages_by_name: dict[str, PackageVersions]
 
     @classmethod
-    def from_index(cls, index: IndexMapping, show_progress: bool = True) -> "PackageCatalog":
+    def from_index(
+        cls, index: IndexMapping, show_progress: bool = True
+    ) -> "PackageCatalog":
         packages = cls._build_packages(index, show_progress)
         return cls(packages_by_name=packages)
 
@@ -54,7 +62,9 @@ class PackageCatalog:
         return cls(packages_by_name=packages)
 
     @staticmethod
-    def _build_packages(index: IndexMapping, show_progress: bool) -> dict[str, PackageVersions]:
+    def _build_packages(
+        index: IndexMapping, show_progress: bool
+    ) -> dict[str, PackageVersions]:
         packages_by_name: dict[str, PackageVersions] = {}
 
         def add_entry(pkg_hash: str, entry: MappingEntry):
@@ -95,7 +105,9 @@ class PackageCatalog:
         return packages_by_name
 
     @staticmethod
-    def _serialize(packages_by_name: dict[str, PackageVersions]) -> dict[str, dict[str, list[str]]]:
+    def _serialize(
+        packages_by_name: dict[str, PackageVersions],
+    ) -> dict[str, dict[str, list[str]]]:
         return {
             name: {
                 version: [pkg_hash for pkg_hash, _ in builds]

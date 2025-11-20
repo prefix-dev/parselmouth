@@ -17,7 +17,9 @@ from .common import console
 class BuildTableRenderer:
     """Renders build information using Rich tables."""
 
-    def render(self, package_name: str, version: str, builds: list[tuple[str, MappingEntry]]):
+    def render(
+        self, package_name: str, version: str, builds: list[tuple[str, MappingEntry]]
+    ):
         table = Table(
             title=f"{package_name}-{version} Builds and PyPI Mappings",
             show_header=True,
@@ -29,7 +31,9 @@ class BuildTableRenderer:
         table.add_column("PyPI Package(s)", style="green")
         table.add_column("PyPI Version(s)", style="yellow")
 
-        for idx, (_, entry) in enumerate(sorted(builds, key=lambda x: x[1].package_name), 1):
+        for idx, (_, entry) in enumerate(
+            sorted(builds, key=lambda x: x[1].package_name), 1
+        ):
             pkg_base = entry.package_name.replace(".tar.bz2", "").replace(".conda", "")
             parts = pkg_base.rsplit("-", 2)
             build_string = parts[2] if len(parts) >= 3 else "unknown"
@@ -131,7 +135,9 @@ class PyPIVersionTableRenderer:
         console.print(
             "\n[dim]Note: To view build details (size, timestamp, etc.), you need the package hash.[/dim]"
         )
-        console.print("[dim]Hash lookups can be added here in a future enhancement.[/dim]")
+        console.print(
+            "[dim]Hash lookups can be added here in a future enhancement.[/dim]"
+        )
 
 
 __all__ = ["BuildTableRenderer", "PyPIVersionTableRenderer"]

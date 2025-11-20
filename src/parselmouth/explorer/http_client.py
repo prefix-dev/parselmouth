@@ -97,7 +97,9 @@ def fetch_mapping_entry_by_hash(
         response.raise_for_status()
         return MappingEntry.model_validate(response.json())
     except (requests.RequestException, ValueError) as exc:
-        logger.error("Failed to fetch mapping for %s from %s: %s", package_hash, url, exc)
+        logger.error(
+            "Failed to fetch mapping for %s from %s: %s", package_hash, url, exc
+        )
         return None
 
 
@@ -165,4 +167,3 @@ def fetch_pypi_lookup(
     except (requests.RequestException, ValueError) as exc:
         logger.error("PyPI lookup request failed for %s: %s", normalized, exc)
         return None
-

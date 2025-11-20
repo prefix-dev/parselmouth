@@ -48,7 +48,9 @@ def normalize_pypi_name(name: str) -> str:
     return name.lower().replace("-", "_")
 
 
-def sort_versions_descending(versions: dict[str, list[str]]) -> list[tuple[str, list[str]]]:
+def sort_versions_descending(
+    versions: dict[str, list[str]],
+) -> list[tuple[str, list[str]]]:
     """Sort PyPI versions newest to oldest using packaging.version."""
 
     def version_key(item):
@@ -95,7 +97,9 @@ def get_packages_from_index_http(
         console.print(f"[green]✓[/green] Loaded {len(index.root)} packages from index")
     else:
         total = sum(len(packages) for packages in by_subdir.values())
-        console.print(f"[green]✓[/green] Loaded {total} packages across {len(by_subdir)} subdirs")
+        console.print(
+            f"[green]✓[/green] Loaded {total} packages across {len(by_subdir)} subdirs"
+        )
 
     return by_subdir
 
@@ -140,7 +144,9 @@ def explore_package(
         cache_status=cache_status,
         show_progress=True,
     )
-    console.print(f"[green]✓[/green] Found {len(catalog.packages_by_name)} unique package names\n")
+    console.print(
+        f"[green]✓[/green] Found {len(catalog.packages_by_name)} unique package names\n"
+    )
 
     selector = CondaPackageSelector(catalog=catalog)
     try:
@@ -213,11 +219,15 @@ def explore_pypi_package(
         lookup = fetch_pypi_lookup(channel, normalized_name, base_url=base_url)
 
     if not lookup:
-        console.print(f"\n[red]✗[/red] No conda packages found for '{normalized_name}' in {channel}")
+        console.print(
+            f"\n[red]✗[/red] No conda packages found for '{normalized_name}' in {channel}"
+        )
         console.print("[dim]This package may not be available in this channel.[/dim]")
         return
 
-    console.print(f"[green]✓[/green] Found {len(lookup.conda_versions)} PyPI versions in {channel}\n")
+    console.print(
+        f"[green]✓[/green] Found {len(lookup.conda_versions)} PyPI versions in {channel}\n"
+    )
 
     sorted_versions = sort_versions_descending(lookup.conda_versions)
     renderer = PyPIVersionTableRenderer()

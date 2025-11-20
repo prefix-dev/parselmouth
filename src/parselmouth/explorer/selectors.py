@@ -62,7 +62,9 @@ class CondaPackageSelector:
 
     catalog: PackageCatalog
 
-    def select(self, package_name: str | None, prompt_on_multiple: bool = True) -> tuple[str, PackageVersions]:
+    def select(
+        self, package_name: str | None, prompt_on_multiple: bool = True
+    ) -> tuple[str, PackageVersions]:
         if package_name is None:
             console.print("[yellow]Enter Package Name[/yellow]")
             console.print("[dim]Tip: Enter a partial name to search[/dim]")
@@ -127,7 +129,9 @@ def _version_sort_key(version_str: str):
 class VersionSelector:
     """Interactive selector for package versions."""
 
-    def select(self, versions_dict: PackageVersions, requested: str | None) -> str | None:
+    def select(
+        self, versions_dict: PackageVersions, requested: str | None
+    ) -> str | None:
         if requested:
             if requested in versions_dict:
                 return requested
@@ -145,9 +149,13 @@ class VersionSelector:
             console.print(f"  {idx}. {ver} ({build_count} build{suffix})")
 
         if len(sorted_versions) > 30:
-            console.print(f"  [dim]... and {len(sorted_versions) - 30} more versions[/dim]")
+            console.print(
+                f"  [dim]... and {len(sorted_versions) - 30} more versions[/dim]"
+            )
 
-        version_choice = Prompt.ask("\nEnter version number or version string", default="1")
+        version_choice = Prompt.ask(
+            "\nEnter version number or version string", default="1"
+        )
 
         if version_choice.isdigit():
             choice_num = int(version_choice)

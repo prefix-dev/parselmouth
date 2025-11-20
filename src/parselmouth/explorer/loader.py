@@ -20,6 +20,7 @@ class PackageIndexLoader:
 
     def load(self) -> tuple[IndexMapping | None, str | None]:
         with console.status("[bold green]Checking for updates...") as status:
+
             def progress_callback(message: str):
                 status.update(f"[bold green]{message}")
 
