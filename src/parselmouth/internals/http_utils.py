@@ -1,5 +1,7 @@
 """HTTP utilities with optimized connection pooling for parallel requests."""
 
+import threading
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -48,8 +50,9 @@ def create_session_with_large_pool(
     return session
 
 
-# Global session for module-level usage
-_global_session = None
+# Global session for module-level usage with thread-safe initialization
+_global_session: requests.Session | None = None
+_global_session_lock = threading.Lock()
 
 
 def get_global_session() -> requests.Session:
@@ -58,8 +61,27 @@ def get_global_session() -> requests.Session:
 
     This is useful for modules that make many requests and want to
     share a single session across all functions.
+
+    Thread-safe: uses double-checked locking pattern for initialization.
     """
     global _global_session
     if _global_session is None:
-        _global_session = create_session_with_large_pool()
+        with _global_session_lock:
+            # Double-check after acquiring lock
+            if _global_session is None:
+                _global_session = create_session_with_large_pool()
     return _global_session
+
+
+def close_global_session() -> None:
+    """
+    Close and reset the global session.
+
+    Useful for cleanup in tests or when reconfiguring the session.
+    Thread-safe.
+    """
+    global _global_session
+    with _global_session_lock:
+        if _global_session is not None:
+            _global_session.close()
+            _global_session = None

@@ -54,7 +54,8 @@ def get_cache_path(channel: SupportedChannels, base_url: str) -> tuple[Path, Pat
     cache_dir = get_cache_dir()
 
     # Create a stable hash from the base URL
-    url_hash = hashlib.md5(base_url.encode()).hexdigest()[:8]
+    # Use sha256 with 12 chars for lower collision probability than md5[:8]
+    url_hash = hashlib.sha256(base_url.encode()).hexdigest()[:12]
 
     index_file = cache_dir / f"index_{channel}_{url_hash}.json"
     metadata_file = cache_dir / f"index_{channel}_{url_hash}.meta"

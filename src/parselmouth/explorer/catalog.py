@@ -153,7 +153,8 @@ class PackageCatalog:
 
 def _catalog_cache_path(channel: SupportedChannels, base_url: str):
     cache_dir = get_cache_dir()
-    url_hash = hashlib.md5(base_url.encode()).hexdigest()[:8]
+    # Use sha256 with 12 chars for lower collision probability than md5[:8]
+    url_hash = hashlib.sha256(base_url.encode()).hexdigest()[:12]
     return cache_dir / f"catalog_{channel}_{url_hash}.json"
 
 

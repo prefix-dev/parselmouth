@@ -5,6 +5,7 @@ This test verifies that the hash comparison and incremental upload logic works c
 """
 
 import hashlib
+import os
 import pytest
 
 from parselmouth.internals.relations_updater import (
@@ -12,6 +13,10 @@ from parselmouth.internals.relations_updater import (
     _check_file_needs_update,
 )
 from parselmouth.internals.channels import SupportedChannels
+
+
+# Check if S3 credentials are available for integration tests
+HAS_S3_CREDENTIALS = bool(os.getenv("R2_PREFIX_ACCESS_KEY_ID"))
 
 
 def test_compute_file_hash():
@@ -66,17 +71,27 @@ def test_large_data_hash():
     assert len(hash_result) == 64
 
 
-@pytest.mark.skipif(True, reason="Requires S3 credentials - skipped in unit tests")
+@pytest.mark.skipif(
+    not HAS_S3_CREDENTIALS,
+    reason="Requires S3 credentials (R2_PREFIX_ACCESS_KEY_ID not set)",
+)
 def test_check_file_needs_update_with_s3():
     """
     Test _check_file_needs_update with actual S3 interaction.
 
     This test is skipped by default as it requires S3 credentials.
-    Run with: pytest -m "not skip" to enable if credentials are available.
+    Set R2_PREFIX_ACCESS_KEY_ID environment variable to enable.
     """
+    from parselmouth.internals.s3 import s3_client
+
     test_data = b'{"test": "data"}'
+    test_hash = _compute_file_hash(test_data)
     result = _check_file_needs_update(
-        "test-package", test_data, SupportedChannels.CONDA_FORGE
+        "test-package",
+        test_data,
+        test_hash,
+        SupportedChannels.CONDA_FORGE,
+        s3_client,
     )
 
     # Should return True for non-existent file

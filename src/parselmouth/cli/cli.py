@@ -181,7 +181,11 @@ def check_one(
     """
 
     check_one_main(
-        package_name=package_name, subdir=subdir, backend_type=backend, upload=upload
+        package_name=package_name,
+        subdir=subdir,
+        backend_type=backend,
+        channel=channel,
+        upload=upload,
     )
 
 

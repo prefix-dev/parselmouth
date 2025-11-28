@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import boto3
 import boto3.exceptions
 from botocore.config import Config
+from botocore.exceptions import ClientError
 
 
 from pydantic import BaseModel, RootModel
@@ -310,9 +311,10 @@ class S3:
             return metadata.get("content-hash")
         except self._s3_client.exceptions.NoSuchKey:
             return None
-        except Exception as e:
-            # Catch 404 errors that might not be NoSuchKey (e.g., from S3-compatible services)
-            if "404" in str(e) or "Not Found" in str(e):
+        except ClientError as e:
+            # Handle 404 errors from S3-compatible services that may not use NoSuchKey
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code in ("404", "NoSuchKey", "NotFound"):
                 return None
             # Re-raise unexpected errors
             raise
@@ -349,8 +351,13 @@ class S3:
             return True
         except self._s3_client.exceptions.NoSuchKey:
             return False
-        except Exception:
-            # For other errors, assume it doesn't exist
+        except ClientError as e:
+            # Handle 404 errors from S3-compatible services that may not use NoSuchKey
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code in ("404", "NoSuchKey", "NotFound"):
+                return False
+            # Log unexpected errors but return False to be safe
+            logging.warning(f"Unexpected error checking PyPI lookup existence: {e}")
             return False
 
     def get_relations_table(

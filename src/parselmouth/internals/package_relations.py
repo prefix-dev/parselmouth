@@ -109,7 +109,9 @@ class PackageRelation(BaseModel):
     @field_validator("conda_hash")
     @classmethod
     def validate_hash(cls, v: str) -> str:
-        """Ensure hash is lowercase hex string"""
+        """Ensure hash is a valid SHA256 lowercase hex string (64 characters)"""
+        if len(v) != 64:
+            raise ValueError(f"Hash must be 64 characters (SHA256), got {len(v)}: {v}")
         if not all(c in "0123456789abcdef" for c in v):
             raise ValueError(f"Hash must be lowercase hex string, got: {v}")
         return v

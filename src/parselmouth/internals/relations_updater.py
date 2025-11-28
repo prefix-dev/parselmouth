@@ -298,6 +298,8 @@ def generate_and_upload_pypi_lookups(
         if files_to_upload:
             logger.info(f"Uploading {len(files_to_upload)} PyPI lookup files to S3...")
 
+            upload_errors: list[tuple[str, Exception]] = []
+
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {
                     executor.submit(
@@ -310,18 +312,29 @@ def generate_and_upload_pypi_lookups(
                     for pypi_name, info in files_to_upload.items()
                 }
 
-                # Track progress and handle errors
+                # Track progress and collect errors (don't fail fast)
                 with tqdm(total=len(futures), desc="Uploading PyPI lookups") as pbar:
                     for future in as_completed(futures):  # type: ignore[assignment]
                         pypi_name = futures[future]  # type: ignore[index]
                         try:
                             future.result()
-                            pbar.update(1)
                         except Exception as e:
                             logger.error(
                                 f"Failed to upload lookup for {pypi_name}: {e}"
                             )
-                            raise
+                            upload_errors.append((pypi_name, e))
+                        pbar.update(1)
+
+            if upload_errors:
+                failed_packages = [pkg for pkg, _ in upload_errors]
+                logger.error(
+                    f"Failed to upload {len(upload_errors)} PyPI lookup files: "
+                    f"{', '.join(failed_packages[:10])}{'...' if len(failed_packages) > 10 else ''}"
+                )
+                raise RuntimeError(
+                    f"Failed to upload {len(upload_errors)} PyPI lookup files. "
+                    f"First error: {upload_errors[0][1]}"
+                )
 
             logger.info("PyPI lookup files uploaded successfully")
         else:
