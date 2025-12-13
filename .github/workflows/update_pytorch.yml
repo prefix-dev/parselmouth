@@ -15,7 +15,7 @@ jobs:
     outputs:
         string_list: ${{ steps.generate.outputs.string_list }}
     steps:
-        - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         - uses: prefix-dev/setup-pixi@v0.9.3
 
         - name: Generate combination of missing subdirs and letters
@@ -51,7 +51,7 @@ jobs:
             subdirs: ${{fromJson(needs.generate_hash_letters.outputs.string_list)}}
 
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: prefix-dev/setup-pixi@v0.9.3
 
       - name: Get partial index artifacts
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: updater_of_records
     steps:
-        - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         - uses: prefix-dev/setup-pixi@v0.9.3
 
         - name: Get partial index artifacts
@@ -103,7 +103,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - uses: prefix-dev/setup-pixi@v0.9.3
 
