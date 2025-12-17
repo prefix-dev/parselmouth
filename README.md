@@ -138,7 +138,6 @@ There are currently two mappings that are online, one of which is work in progre
 
 2. **(WIP)** The **PyPI - Conda** name mapping that maps a PyPI package to it's known Conda counterpart. This only works for packages that are available on the conda channels that it references. This is available at `https://conda-mapping.prefix.dev/pypi-to-conda-v1/{channel}/{pypi-normalized-name}.json` where the channel is the name of the channel and the `{pypi-normalized-name}` is the normalized name of the package on PyPI.
    E.g for `requests` we can use `https://conda-mapping.prefix.dev/pypi-to-conda-v1/conda-forge/requests.json`, which will give you the corresponding json.
-   There is
 
 ## Infrastructure and Storage Architecture
 
