@@ -83,8 +83,44 @@ A more simplified version of our mapping is stored here: `files/mapping_as_grays
 
 Example of mapping `requests` to the corresponding conda versions is, this shows you the known conda names per PyPI version, if a version is missing it is not available on that conda channel:
 
-```
-{"2.10.0": ["requests"], "2.11.0": ["requests"], "2.11.1": ["requests"], "2.12.0": ["requests"], "2.12.1": ["requests"], "2.12.4": ["requests"], "2.12.5": ["requests"], "2.13.0": ["requests"], "2.17.3": ["requests"], "2.18.1": ["requests"], "2.18.2": ["requests"], "2.18.3": ["requests"], "2.18.4": ["requests"], "2.19.0": ["requests"], "2.19.1": ["requests"], "2.20.0": ["requests"], "2.20.1": ["requests"], "2.21.0": ["requests"], "2.22.0": ["requests"], "2.23.0": ["requests"], "2.9.2": ["requests"], "2.27.1": ["requests", "arm_pyart"], "2.24.0": ["requests", "google-cloud-bigquery-storage-core"], "2.26.0": ["requests"], "2.25.1": ["requests"], "2.25.0": ["requests"], "2.27.0": ["requests"], "2.28.0": ["requests"], "2.28.1": ["requests"], "2.31.0": ["requests", "jupyter-sphinx"], "2.28.2": ["requests"], "2.29.0": ["requests"], "2.32.1": ["requests"], "2.32.2": ["requests"], "2.32.3": ["requests"]}
+```json
+{
+  "2.10.0": ["requests"],
+  "2.11.0": ["requests"],
+  "2.11.1": ["requests"],
+  "2.12.0": ["requests"],
+  "2.12.1": ["requests"],
+  "2.12.4": ["requests"],
+  "2.12.5": ["requests"],
+  "2.13.0": ["requests"],
+  "2.17.3": ["requests"],
+  "2.18.1": ["requests"],
+  "2.18.2": ["requests"],
+  "2.18.3": ["requests"],
+  "2.18.4": ["requests"],
+  "2.19.0": ["requests"],
+  "2.19.1": ["requests"],
+  "2.20.0": ["requests"],
+  "2.20.1": ["requests"],
+  "2.21.0": ["requests"],
+  "2.22.0": ["requests"],
+  "2.23.0": ["requests"],
+  "2.9.2": ["requests"],
+  "2.27.1": ["requests", "arm_pyart"],
+  "2.24.0": ["requests", "google-cloud-bigquery-storage-core"],
+  "2.26.0": ["requests"],
+  "2.25.1": ["requests"],
+  "2.25.0": ["requests"],
+  "2.27.0": ["requests"],
+  "2.28.0": ["requests"],
+  "2.28.1": ["requests"],
+  "2.31.0": ["requests", "jupyter-sphinx"],
+  "2.28.2": ["requests"],
+  "2.29.0": ["requests"],
+  "2.32.1": ["requests"],
+  "2.32.2": ["requests"],
+  "2.32.3": ["requests"]
+}
 ```
 
 ## Online availability
