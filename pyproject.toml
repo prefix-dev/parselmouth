@@ -47,6 +47,7 @@ aioboto3 = ">=13.1.1,<14"
 ruamel = ">=1.0,<2"
 tqdm = ">=4.67.0,<5"
 rich = ">=13.7.0,<14"
+docker-compose = ">=5.0.0,<6"
 
 [tool.pixi.feature.test.dependencies]
 pytest = "*"
