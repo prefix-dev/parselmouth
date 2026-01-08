@@ -78,7 +78,7 @@ class PyPIVersionTableRenderer:
         self,
         normalized_name: str,
         channel: SupportedChannels,
-        sorted_versions: list[tuple[str, list[str]]],
+        sorted_versions: list[tuple[str, str]],
     ):
         table = Table(
             title=f"PyPI Package: {normalized_name} (Channel: {channel})",
@@ -86,22 +86,13 @@ class PyPIVersionTableRenderer:
         )
         table.add_column("#", style="dim", width=4)
         table.add_column("PyPI Version", style="green")
-        table.add_column("Conda Packages", style="cyan")
-        table.add_column("Conda Count", style="magenta", justify="right")
+        table.add_column("Conda Package", style="cyan")
 
-        for idx, (pypi_version, conda_packages) in enumerate(sorted_versions, 1):
-            if len(conda_packages) <= 3:
-                packages_str = ", ".join(conda_packages)
-            else:
-                packages_str = f"{', '.join(conda_packages[:3])}, ... (+{len(conda_packages)-3} more)"
-
-            count = len(conda_packages)
-
+        for idx, (pypi_version, conda_package) in enumerate(sorted_versions, 1):
             table.add_row(
                 str(idx),
                 pypi_version,
-                packages_str,
-                str(count),
+                conda_package,
             )
 
         console.print(table)
@@ -110,33 +101,21 @@ class PyPIVersionTableRenderer:
         self,
         pypi_name: str,
         pypi_version: str,
-        conda_packages: list[str],
+        conda_package: str,
         channel: SupportedChannels,
     ):
         console.print(
             Panel.fit(
-                f"[cyan]PyPI:[/cyan] {pypi_name}\n[cyan]Version:[/cyan] {pypi_version}\n[cyan]Channel:[/cyan] {channel}",
-                title="PyPI Selection",
+                f"[cyan]PyPI:[/cyan] {pypi_name}\n"
+                f"[cyan]Version:[/cyan] {pypi_version}\n"
+                f"[cyan]Channel:[/cyan] {channel}\n"
+                f"[cyan]Conda Package:[/cyan] {conda_package}",
+                title="PyPI to Conda Mapping",
                 border_style="green",
             )
         )
-
-        table = Table(title=f"Conda Packages (Channel: {channel})", show_header=True)
-        table.add_column("#", style="dim", width=4)
-        table.add_column("Conda Package Name", style="cyan")
-
-        for idx, conda_pkg in enumerate(conda_packages, 1):
-            table.add_row(str(idx), conda_pkg)
-
-        console.print(table)
         console.print(
-            f"\n[green]✓[/green] {len(conda_packages)} conda package(s) provide {pypi_name}=={pypi_version}"
-        )
-        console.print(
-            "\n[dim]Note: To view build details (size, timestamp, etc.), you need the package hash.[/dim]"
-        )
-        console.print(
-            "[dim]Hash lookups can be added here in a future enhancement.[/dim]"
+            f"\n[green]✓[/green] {pypi_name}=={pypi_version} → {conda_package}"
         )
 
 

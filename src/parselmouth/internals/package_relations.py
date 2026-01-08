@@ -40,6 +40,34 @@ from parselmouth.internals.types import (
 logger = logging.getLogger(__name__)
 
 
+def levenshtein_distance(s1: str, s2: str) -> int:
+    """
+    Calculate the Levenshtein distance between two strings.
+
+    The Levenshtein distance is the minimum number of single-character edits
+    (insertions, deletions, or substitutions) required to change one string
+    into the other.
+    """
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+
+    if len(s2) == 0:
+        return len(s1)
+
+    previous_row: list[int] = list(range(len(s2) + 1))
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            # Cost is 0 if characters match, 1 otherwise
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+
+    return previous_row[-1]
+
+
 def parse_conda_filename(filename: CondaFileName) -> tuple[CondaVersion, str]:
     """
     Parse conda filename to extract version and build string.
@@ -371,15 +399,16 @@ class PyPIPackageLookup(BaseModel):
     """
     Simplified lookup response for a single PyPI package.
 
-    This only includes conda package names, without version/build details.
+    This only includes the best-matching conda package name (by Levenshtein distance),
+    without version/build details.
     This is what gets served at: /pypi-to-conda-v1/{channel}/{pypi_name}.json
     """
 
     format_version: str = "1.0"
     channel: str
     pypi_name: PyPIName
-    conda_versions: dict[PyPIVersion, list[CondaPackageName]] = Field(
-        description="Map of PyPI version to list of Conda package names that provide it"
+    conda_versions: dict[PyPIVersion, CondaPackageName] = Field(
+        description="Map of PyPI version to the best-matching Conda package name that provides it"
     )
 
     def to_json_bytes(self) -> bytes:
@@ -420,7 +449,8 @@ def create_pypi_lookup_files(
     """
     Create simplified individual lookup files for each PyPI package.
 
-    This version only includes conda package names (not versions/builds).
+    This version only includes the best-matching conda package name (by Levenshtein
+    distance to the PyPI name), without version/build details.
     These are the files that will be served at:
     /pypi-to-conda-v1/{channel}/{pypi_name}.json
 
@@ -431,12 +461,16 @@ def create_pypi_lookup_files(
 
     lookups = {}
     for pypi_name, versions in pypi_to_conda.items():
-        # Simplify: extract just the conda package names
-        simplified_versions: dict[PyPIVersion, list[CondaPackageName]] = {}
+        # For each version, pick the conda package with smallest Levenshtein distance
+        simplified_versions: dict[PyPIVersion, CondaPackageName] = {}
         for pypi_version, conda_packages in versions.items():
             # Get unique conda package names
             conda_names = list(dict.fromkeys([pkg.name for pkg in conda_packages]))
-            simplified_versions[pypi_version] = conda_names
+            # Pick the one with smallest Levenshtein distance to the PyPI name
+            best_match = min(
+                conda_names, key=lambda name: levenshtein_distance(pypi_name, name)
+            )
+            simplified_versions[pypi_version] = best_match
 
         lookup = PyPIPackageLookup(
             channel=str(table.channel),

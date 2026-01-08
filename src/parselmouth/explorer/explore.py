@@ -49,11 +49,11 @@ def normalize_pypi_name(name: str) -> str:
 
 
 def sort_versions_descending(
-    versions: dict[str, list[str]],
-) -> list[tuple[str, list[str]]]:
+    versions: dict[str, str],
+) -> list[tuple[str, str]]:
     """Sort PyPI versions newest to oldest using packaging.version."""
 
-    def version_key(item):
+    def version_key(item: tuple[str, str]) -> Version | str:
         version_str, _ = item
         try:
             return Version(version_str)

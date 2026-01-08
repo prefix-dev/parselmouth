@@ -409,7 +409,7 @@ def test_pypi_lookup_content_format(mock_s3_environment, sample_repodata):
 
     Verifies:
     - Field names are correct (conda_versions not versions)
-    - Values are lists of conda package names (strings)
+    - Values are single conda package names (best match by Levenshtein distance)
     - No CondaPackageVersion objects (that's the detailed format)
     """
     # Create S3 wrapper with the mocked client
@@ -455,21 +455,18 @@ def test_pypi_lookup_content_format(mock_s3_environment, sample_repodata):
     assert numpy_lookup["pypi_name"] == "numpy"
     assert "conda_versions" in numpy_lookup  # NOT "versions"
 
-    # Check content - should be dict[version, list[package_names]]
+    # Check content - should be dict[version, conda_package_name]
     conda_versions = numpy_lookup["conda_versions"]
     assert isinstance(conda_versions, dict)
 
-    # Each version should map to a list of strings (package names)
-    for version, conda_packages in conda_versions.items():
-        assert isinstance(conda_packages, list)
-        assert all(isinstance(name, str) for name in conda_packages)
-        # Should NOT be objects with 'name', 'version', 'builds' fields
-        assert all(not isinstance(name, dict) for name in conda_packages)
+    # Each version should map to a single string (best matching package name)
+    for version, conda_package in conda_versions.items():
+        assert isinstance(conda_package, str)
 
     # Numpy should have 2 versions
     assert "1.26.4" in conda_versions
     assert "1.27.0" in conda_versions
-    assert conda_versions["1.26.4"] == ["numpy"]
-    assert conda_versions["1.27.0"] == ["numpy"]
+    assert conda_versions["1.26.4"] == "numpy"
+    assert conda_versions["1.27.0"] == "numpy"
 
     print("✓ PyPI lookup format is correct (simplified, not detailed)")
