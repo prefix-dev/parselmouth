@@ -50,7 +50,7 @@ jobs:
     outputs:
       string_list: ${{ steps.generate.outputs.string_list }}
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: prefix-dev/setup-pixi@v0.9.3
 
       - name: Generate combination of missing subdirs and letters
@@ -86,7 +86,7 @@ jobs:
         subdirs: ${{fromJson(needs.generate_hash_letters.outputs.string_list)}}
 
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: prefix-dev/setup-pixi@v0.9.3
 
       - name: Get partial index artifacts
@@ -115,7 +115,7 @@ jobs:
     needs: updater_of_records
     if: needs.updater_of_records.result == 'success'
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: prefix-dev/setup-pixi@v0.9.3
 
       - name: Get partial index artifacts
@@ -141,7 +141,7 @@ jobs:
       always() &&
       (inputs.force_v1_generation == true || needs.updater_of_index.result == 'success')
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: prefix-dev/setup-pixi@v0.9.3
 
       - name: Generate and upload v1 mappings (relations table + PyPI lookups)
@@ -168,7 +168,7 @@ jobs:
       (needs.update_v1_mappings.result == 'success' || needs.update_v1_mappings.result == 'skipped')
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: prefix-dev/setup-pixi@v0.9.3
 
       - name: Update legacy mapping (if needed)
