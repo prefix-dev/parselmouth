@@ -1,33 +1,32 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "parselmouth"
 version = "0.0.1"
-authors = [
-  { name="Nichita Morcotilo", email="nichita@prefix.dev" },
-]
 description = "Mapper of conda to pypi"
 readme = "README.md"
 requires-python = "==3.12"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+authors = [
+  { name = "Nichita Morcotilo", email = "nichita@prefix.dev" },
 ]
-
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+]
 # These are pypi dependencies
 dependencies = [
-    # needs to be published
-    "conda-oci-mirror @ git+https://github.com/channel-mirrors/conda-oci-mirror.git@25ea3e436f0b0bc5a9c646121efafc9c68e116cd",
-    "conda-forge-metadata~=0.8.1",
+  "conda-forge-metadata>=0.12.0",
+  # needs to be published
+  "conda-oci-mirror @ git+https://github.com/channel-mirrors/conda-oci-mirror.git@25ea3e436f0b0bc5a9c646121efafc9c68e116cd",
 ]
 
 [project.scripts]
 parselmouth = "parselmouth.parselmouth:app"
 
-[tool.pixi.project]
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pixi.workspace]
 name = "parselmouth"
 channels = ["conda-forge"]
 platforms = ["osx-arm64", "linux-64", "win-64"]
@@ -42,16 +41,36 @@ boto3 = ">=1.34,<1.35"
 boto3-stubs = ">=1.34,<1.35"
 python-dotenv = ">=1.0.1,<1.1"
 packaging = "*"
-typer = ">=0.12.4,<0.13"
+typer = ">=0.15.0,<0.16"
 pydantic = ">=2.8.2,<3"
 aioboto3 = ">=13.1.1,<14"
 ruamel = ">=1.0,<2"
+tqdm = ">=4.67.0,<5"
+rich = ">=13.7.0,<14"
+docker-compose = ">=5.0.0,<6"
 
 [tool.pixi.feature.test.dependencies]
 pytest = "*"
 
+[tool.pixi.feature.test.pypi-dependencies]
+moto = { version = ">=5.0.0,<6", extras = ["s3"] }
+
 [tool.pixi.feature.test.tasks]
 test = "pytest tests"
+test-v1 = "python scripts/test_v1_mapping.py"
+test-pipeline = { cmd = "python scripts/test_pipeline_local.py", depends-on = [] }
+start-minio = "docker-compose up -d"
+# Interactive testing
+test-interactive = { cmd = "python scripts/test_pipeline_local.py --interactive", depends-on = [
+  "start-minio"
+] }
+clean-outputs = "rm -rf output/ output_index/ output_relations/ local_test_output/ test_production/"
+clean-cache = "rm -rf .pixi/envs/test/lib/python*/site-packages/conda_oci_mirror/cache/"
+clean-local-data = { depends-on = ["clean-outputs", "clean-cache"] }
+clean-all = { cmd = "docker-compose down -v", depends-on = [
+  "clean-outputs",
+  "clean-cache"
+] }
 
 [tool.pixi.feature.fmt.dependencies]
 # Formatting python
@@ -65,7 +84,6 @@ mypy = ">=1.10.1,<2"
 # Format recipes using ruff
 fmt = "ruff format"
 check-fmt = "ruff check --fix"
-
 pre-commit-install = "pre-commit-install"
 pre-commit-run = "pre-commit run"
 lint = "pre-commit run -a"
@@ -80,10 +98,9 @@ mypy = ">=1.10.1, <2"
 type-check = "mypy src"
 
 [tool.pixi.environments]
-test = {features = ["test"], solve-group = "default"}
-fmt = {features = ["fmt"], solve-group = "default"}
+test = { features = ["test"], solve-group = "default" }
+fmt = { features = ["fmt"], solve-group = "default" }
 type-checking = { features = ["type-checking"] }
-
 
 [tool.pyright]
 venv = "default"

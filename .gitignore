@@ -173,3 +173,6 @@ mapping/*# pixi environments
 # folders using by parselmouth
 output/
 output_index/
+output_relations/
+local_test_output/
+test_production/

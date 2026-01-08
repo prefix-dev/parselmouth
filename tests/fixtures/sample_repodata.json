@@ -1,0 +1,92 @@
+{
+  "info": {
+    "subdir": "linux-64"
+  },
+  "packages": {
+    "numpy-1.26.4-py311h64a7726_0.conda": {
+      "build": "py311h64a7726_0",
+      "build_number": 0,
+      "depends": [
+        "python >=3.11,<3.12.0a0"
+      ],
+      "license": "BSD-3-Clause",
+      "md5": "3f4365e11b28e244c95ba8579942b080",
+      "name": "numpy",
+      "sha256": "3f4365e11b28e244c95ba8579942b0802761ba7bb31c026f50d1a9ea9c728149",
+      "size": 7821234,
+      "subdir": "linux-64",
+      "timestamp": 1704067200000,
+      "version": "1.26.4"
+    },
+    "numpy-1.27.0-py311h64a7726_0.conda": {
+      "build": "py311h64a7726_0",
+      "build_number": 0,
+      "depends": [
+        "python >=3.11,<3.12.0a0"
+      ],
+      "license": "BSD-3-Clause",
+      "md5": "4f5476e22c29e355c95ca9579942b090",
+      "name": "numpy",
+      "sha256": "4f5476e22c29e355c95ca9579942b0902761ba7bb31c026f50d1a9ea9c728150",
+      "size": 7921234,
+      "subdir": "linux-64",
+      "timestamp": 1704153600000,
+      "version": "1.27.0"
+    },
+    "requests-2.31.0-pyhd8ed1ab_0.conda": {
+      "build": "pyhd8ed1ab_0",
+      "build_number": 0,
+      "depends": [
+        "python >=3.7",
+        "charset-normalizer >=2,<4",
+        "idna >=2.5,<4",
+        "urllib3 >=1.21.1,<3"
+      ],
+      "license": "Apache-2.0",
+      "md5": "5d380f9ab4d99f8e6e5ecc164ffc5e86",
+      "name": "requests",
+      "sha256": "5d380f9ab4d99f8e6e5ecc164ffc5e8631c026f50d1a9ea9c728149abcdef789",
+      "size": 123456,
+      "subdir": "linux-64",
+      "timestamp": 1704240000000,
+      "version": "2.31.0"
+    },
+    "pandas-2.0.0-py311h64a7726_0.conda": {
+      "build": "py311h64a7726_0",
+      "build_number": 0,
+      "depends": [
+        "python >=3.11,<3.12.0a0",
+        "numpy >=1.21.0",
+        "python-dateutil >=2.8.1",
+        "pytz >=2020.1"
+      ],
+      "license": "BSD-3-Clause",
+      "md5": "6e7890a1c29e467cf89ca95f50c1a2e1",
+      "name": "pandas",
+      "sha256": "6e7890a1c29e467cf89ca95f50c1a2e131c026f50d1a9ea9c728149abcdef790",
+      "size": 12345678,
+      "subdir": "linux-64",
+      "timestamp": 1704326400000,
+      "version": "2.0.0"
+    },
+    "scipy-1.11.0-py311h64a7726_0.conda": {
+      "build": "py311h64a7726_0",
+      "build_number": 0,
+      "depends": [
+        "python >=3.11,<3.12.0a0",
+        "numpy >=1.21.0"
+      ],
+      "license": "BSD-3-Clause",
+      "md5": "7f8901b2c30e578cf89da96f51e2f2e2",
+      "name": "scipy",
+      "sha256": "7f8901b2c30e578cf89da96f51e2f2e231c026f50d1a9ea9c728149abcdef791",
+      "size": 23456789,
+      "subdir": "linux-64",
+      "timestamp": 1704412800000,
+      "version": "1.11.0"
+    }
+  },
+  "packages.conda": {},
+  "removed": [],
+  "repodata_version": 1
+}

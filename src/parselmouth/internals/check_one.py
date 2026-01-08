@@ -51,13 +51,14 @@ def main(
     repodatas = get_all_packages_by_subdir(subdir, channel)
 
     found_sha = None
-
-    for repodata_package_name in repodatas:
-        if repodata_package_name == package_name:
-            found_sha = repodatas[package_name]["sha256"]
+    repodata_by_label = None
+    for label, packages in repodatas.items():
+        if package_name in packages:
+            repodata_by_label = packages
+            found_sha = packages[package_name]["sha256"]
             break
 
-    if not found_sha:
+    if not found_sha or not repodata_by_label:
         raise ValueError(
             f"Could not find the package {package_name} in the repodata for subdir {subdir}"
         )
@@ -71,7 +72,7 @@ def main(
             subdir=subdir, artifact=package_name, backend=backend_type, channel=channel
         )
         if artifact:
-            sha = repodatas[package_name]["sha256"]
+            sha = repodata_by_label[package_name]["sha256"]
             if sha not in names_mapping:
                 mapping_entry = extract_artifact_mapping(artifact, package_name)
                 names_mapping[sha] = mapping_entry

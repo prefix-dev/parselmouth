@@ -49,9 +49,18 @@ async def upload_to_s3(names_mapping: IndexMapping):
     access_key_secret = os.getenv("R2_PREFIX_SECRET_ACCESS_KEY", "")
     bucket_name = os.getenv("R2_PREFIX_BUCKET", "conda")
 
+    # Check for custom S3 endpoint (for local MinIO testing)
+    # Support both R2_PREFIX_ENDPOINT and standard AWS_ENDPOINT_URL
+    endpoint_url = os.getenv("R2_PREFIX_ENDPOINT") or os.getenv("AWS_ENDPOINT_URL")
+    if endpoint_url:
+        # Custom S3-compatible endpoint (e.g., MinIO)
+        logging.info(f"Using custom S3 endpoint for updater: {endpoint_url}")
+        final_endpoint = endpoint_url
+    else:
+        # Default: Cloudflare R2 endpoint
+        final_endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
+
     session = aioboto3.Session(
-        # service_name="s3",
-        # endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
         aws_access_key_id=f"{access_key_id}",
         aws_secret_access_key=f"{access_key_secret}",
         region_name="eeur",  # Must be one of: wnam, enam, weur, eeur, apac, auto
@@ -59,9 +68,9 @@ async def upload_to_s3(names_mapping: IndexMapping):
     config = botocore.client.Config(
         max_pool_connections=50,
     )
-    async with session.client(
+    async with session.client(  # type: ignore[call-overload]
         "s3",
-        endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
+        endpoint_url=final_endpoint,
         config=config,
     ) as s3_client:
         tasks = [
@@ -93,6 +102,9 @@ def main(
 
     subdir, letter = subdir_letter.split("@")
 
+    # Support processing all packages (when letter is "all")
+    process_all = letter.lower() == "all"
+
     all_packages: list[tuple[str, str]] = []
 
     index_location = Path(output_dir) / channel / "index.json"
@@ -103,7 +115,7 @@ def main(
 
     for _idx, (label, packages) in enumerate(repodatas_with_label.items()):
         for package_name in packages:
-            if not package_name.startswith(letter):
+            if not process_all and not package_name.startswith(letter):
                 continue
 
             package = packages[package_name]

@@ -57,7 +57,7 @@ async def remove_from_s3(sha_to_remove: list[str]):
     config = botocore.client.Config(
         max_pool_connections=50,
     )
-    async with session.client(
+    async with session.client(  # type: ignore[call-overload]
         "s3",
         endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
         config=config,
