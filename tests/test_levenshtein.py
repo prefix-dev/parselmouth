@@ -1,7 +1,5 @@
 """Tests for Levenshtein distance and best-match selection logic."""
 
-import pytest
-
 from parselmouth.internals.package_relations import (
     levenshtein_distance,
     create_pypi_lookup_files,
