@@ -36,12 +36,12 @@ parselmouth = { path = ".", editable = true }
 types-aioboto3 = "*"
 
 [tool.pixi.dependencies]
-requests = ">=2.31.0,<2.32"
-boto3 = ">=1.34,<1.35"
-boto3-stubs = ">=1.34,<1.35"
-python-dotenv = ">=1.0.1,<1.1"
+requests = ">=2.32.5,<2.33"
+boto3 = ">=1.42,<1.43"
+boto3-stubs = ">=1.40,<1.41"
+python-dotenv = ">=1.2.1,<1.3"
 packaging = "*"
-typer = ">=0.15.0,<0.16"
+typer = ">=0.24,<0.25"
 pydantic = ">=2.8.2,<3"
 aioboto3 = ">=13.1.1,<14"
 ruamel = ">=1.0,<2"
@@ -74,7 +74,7 @@ clean-all = { cmd = "docker-compose down -v", depends-on = [
 
 [tool.pixi.feature.fmt.dependencies]
 # Formatting python
-ruff = ">=0.5.0,<0.6"
+ruff = ">=0.15.2,<0.16"
 pre-commit = ">=3.7.1,<4"
 pre-commit-hooks = ">=4.6.0,<5"
 typos = ">=1.23.1,<2"
@@ -90,8 +90,8 @@ lint = "pre-commit run -a"
 
 [tool.pixi.feature.type-checking.dependencies]
 types-pyyaml = ">=6.0.12.20240311, <6.0.13"
-types-requests = ">=2.31.0, <2.32"
-types-Deprecated = ">=1.2.9.20240311, <1.3"
+types-requests = ">=2.32.4,<2.33"
+types-Deprecated = ">=1.3.1.20260130,<1.4"
 mypy = ">=1.10.1, <2"
 
 [tool.pixi.feature.type-checking.tasks]
