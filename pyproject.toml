@@ -43,10 +43,10 @@ python-dotenv = ">=1.0.1,<1.1"
 packaging = "*"
 typer = ">=0.15.0,<0.16"
 pydantic = ">=2.8.2,<3"
-aioboto3 = ">=13.1.1,<14"
+aioboto3 = ">=15.5,<16"
 ruamel = ">=1.0,<2"
 tqdm = ">=4.67.0,<5"
-rich = ">=13.7.0,<14"
+rich = ">=14.3.3,<15"
 docker-compose = ">=5.0.0,<6"
 
 [tool.pixi.feature.test.dependencies]
@@ -75,8 +75,8 @@ clean-all = { cmd = "docker-compose down -v", depends-on = [
 [tool.pixi.feature.fmt.dependencies]
 # Formatting python
 ruff = ">=0.5.0,<0.6"
-pre-commit = ">=3.7.1,<4"
-pre-commit-hooks = ">=4.6.0,<5"
+pre-commit = ">=4.5.1,<5"
+pre-commit-hooks = ">=5,<6"
 typos = ">=1.23.1,<2"
 mypy = ">=1.10.1,<2"
 
