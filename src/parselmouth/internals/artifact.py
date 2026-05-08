@@ -1,19 +1,28 @@
-from pathlib import Path
-import re
-from packaging.version import parse
-from parselmouth.internals.utils import normalize
-from typing import Optional
-from conda_forge_metadata.types import ArtifactData
 import logging
+import re
+from pathlib import Path
+from typing import Optional
+
+from conda_forge_metadata.types import ArtifactData
+from packaging.version import parse
 
 from parselmouth.internals.s3 import MappingEntry
-
+from parselmouth.internals.utils import normalize
 
 dist_info_pattern = r"([^/]+)-(\d+[^/]*)\.dist-info\/METADATA"
 egg_info_pattern = r"([^/]+?)-(\d+[^/]*)\.egg-info\/PKG-INFO"
 
 dist_pattern_compiled = re.compile(dist_info_pattern)
 egg_pattern_compiled = re.compile(egg_info_pattern)
+
+# Matches paths that start with one of the three canonical site-packages
+# locations of a conda environment:
+#   - "site-packages/"                        (noarch packages)
+#   - "lib/pythonX.Y/site-packages/"          (Linux / macOS)
+#   - "Lib/site-packages/"                    (Windows)
+site_packages_prefix_pattern = re.compile(
+    r"^(?:site-packages|lib/python\d+(?:\.\d+)?/site-packages|Lib/site-packages)/"
+)
 
 
 def check_if_is_direct_url(package_name: str, url: Optional[str]) -> bool:
@@ -44,6 +53,12 @@ def get_pypi_names_and_version(files: list[str]) -> dict[str, str]:
     package_names: dict[str, str] = {}
     for file_name in files:
         file_path = Path(file_name)
+        # Reject anything outside the conda environment's own site-packages,
+        # e.g. a bundled Python shipped under share/.../bundledpythonunix/.
+        # Those dist-info entries belong to a private interpreter and must
+        # not be advertised as PyPI names provided by the conda package.
+        if not site_packages_prefix_pattern.match(file_name):
+            continue
         # sometimes, packages like setuptools have some stuff vendored
         # that our regex will catch:
         # site-packages/setuptools/_vendor/zipp-3.19.2.dist-info/RECORD

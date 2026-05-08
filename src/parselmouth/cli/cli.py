@@ -1,18 +1,18 @@
 from typing import Annotated, Optional
+
 import typer
 
-
-from parselmouth.internals.updater_producer import main as updater_producer_main
-from parselmouth.internals.updater import main as updater_main
+from parselmouth.explorer import explore_package
+from parselmouth.internals.channels import SupportedChannels
 from parselmouth.internals.check_one import main as check_one_main
-from parselmouth.internals.updater_merger import main as update_merger_main
+from parselmouth.internals.deleter import delete_main
 from parselmouth.internals.legacy_mapping import main as legacy_mapping_main
 from parselmouth.internals.mapping_transformer import main as mapping_transformer_main
 from parselmouth.internals.relations_updater import main as relations_updater_main
 from parselmouth.internals.remover import main as remover_main
-from parselmouth.explorer import explore_package
-
-from parselmouth.internals.channels import SupportedChannels
+from parselmouth.internals.updater import main as updater_main
+from parselmouth.internals.updater_merger import main as update_merger_main
+from parselmouth.internals.updater_producer import main as updater_producer_main
 
 app = typer.Typer(no_args_is_help=True, pretty_exceptions_enable=False)
 
@@ -210,6 +210,41 @@ def remove(
 
 
 @app.command()
+def delete(
+    names: Annotated[
+        list[str],
+        typer.Argument(
+            help="Conda package names whose records to remove from the index."
+        ),
+    ],
+    channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+    subdir: Annotated[
+        Optional[list[str]],
+        typer.Option(
+            "--subdir",
+            help="Limit to specific subdirs (repeatable). Defaults to all subdirs.",
+        ),
+    ] = None,
+    dry_run: bool = True,
+):
+    """
+    Delete existing mapping records for the given conda package names from R2
+    and the channel index, forcing the next updater run to re-extract them
+    with current extraction logic.
+
+    Use this after fixing a bug in mapping extraction (e.g. a change to
+    `extract_artifact_mapping`) that has removed previously-stored
+    records.
+    """
+    delete_main(
+        names=names,
+        channel=channel,
+        subdirs=subdir,
+        dry_run=dry_run,
+    )
+
+
+@app.command()
 def explore(
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
     endpoint: str = typer.Option(
@@ -351,8 +386,9 @@ def cache_info():
 
     Displays cache location, size, and metadata for all cached index files.
     """
-    from parselmouth.explorer.index_cache import get_cache_dir, get_cache_info
     from datetime import datetime
+
+    from parselmouth.explorer.index_cache import get_cache_dir, get_cache_info
 
     cache_dir = get_cache_dir()
     typer.echo(f"\n📁 Cache directory: {cache_dir}\n")
