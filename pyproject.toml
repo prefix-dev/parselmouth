@@ -97,10 +97,21 @@ mypy = ">=1.10.1, <2"
 [tool.pixi.feature.type-checking.tasks]
 type-check = "mypy src"
 
+[tool.pixi.feature.frontend.dependencies]
+nodejs = ">=20,<21"
+pnpm = ">=9,<10"
+
+[tool.pixi.feature.frontend.tasks]
+frontend-install = { cmd = "pnpm install", cwd = "frontend" }
+frontend = { cmd = "pnpm run dev", cwd = "frontend", depends-on = ["frontend-install"] }
+frontend-build = { cmd = "pnpm run build", cwd = "frontend", depends-on = ["frontend-install"] }
+frontend-preview = { cmd = "pnpm run preview", cwd = "frontend", depends-on = ["frontend-install"] }
+
 [tool.pixi.environments]
 test = { features = ["test"], solve-group = "default" }
 fmt = { features = ["fmt"], solve-group = "default" }
 type-checking = { features = ["type-checking"] }
+frontend = { features = ["frontend"], no-default-feature = true }
 
 [tool.pyright]
 venv = "default"

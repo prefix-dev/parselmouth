@@ -295,6 +295,35 @@ The table is stored as JSONL (JSON Lines) with gzip compression:
 
 The ratio (~1.07 relationships per conda package) shows that most conda packages map to a single PyPI package, with occasional vendoring creating the extra relationships.
 
+## Web UI
+
+A small React frontend lives under `frontend/` and is deployed via GitHub Pages at
+`https://prefix-dev.github.io/parselmouth/`. It lets you browse the conda ↔ PyPI
+mapping from a single search box and shares deep links like
+`/parselmouth/?q=numpy&dir=conda`.
+
+Data flows directly from `https://conda-mapping.prefix.dev` — the hourly parselmouth
+pipeline writes small per-channel `frontend-v1/{channel}/names.json` and
+`pairs.json` artifacts alongside the existing v0/v1 outputs, and the frontend
+fetches them live. **The site does not need to be redeployed when the mapping
+updates** — only when frontend code changes.
+
+Local development:
+
+```bash
+pixi run -e frontend frontend
+# open http://localhost:5173/parselmouth/
+```
+
+(`frontend` depends on `frontend-install`, so dependencies are installed on first run.)
+
+The dev server proxies `/api/r2` to `https://conda-mapping.prefix.dev` so CORS
+is not required for localhost.
+
+Production requires CORS to allow `https://prefix-dev.github.io` on the
+`conda-mapping.prefix.dev` R2 bucket. GitHub Pages must also be enabled under
+**Settings → Pages → Source: GitHub Actions**.
+
 ## Thanks!
 
 Developed with ❤️ at [prefix.dev](https://prefix.dev).

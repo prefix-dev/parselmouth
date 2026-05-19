@@ -1,0 +1,84 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Moranga";
+  src: url("/parselmouth/fonts/Moranga-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-cream-50 text-ink font-sans text-sm leading-normal;
+  }
+  mark {
+    @apply rounded-sm bg-brand-yellow/45 px-[1px] text-inherit;
+  }
+}
+
+@layer components {
+  /* Pulse — green status dot that gently ripples; pure-utility version
+     loses the keyframe, so it lives here. */
+  .ps-pulse {
+    @apply inline-block h-[7px] w-[7px] rounded-full bg-conda-dot;
+    box-shadow: 0 0 0 0 rgba(112, 192, 56, 0.5);
+    animation: ps-pulse 2.4s ease-out infinite;
+  }
+
+  /* Drift-marker rule — a dashed line that sits between two table rows
+     with the cap-label floating on top, masking the line behind it.
+     The positioning trick can't be expressed cleanly as utilities. */
+  .ps-drift-rule {
+    @apply mx-3 block border-t border-dashed border-brand-yellow-alt;
+    position: relative;
+    top: 11px;
+  }
+  .ps-drift-cap {
+    @apply relative z-10 ml-6 inline-flex items-center gap-1.5 bg-cream-50 px-2.5 py-0.5 text-[10.5px] leading-snug text-cream-600;
+  }
+
+  /* Custom scrollbar for the version table — Tailwind doesn't expose
+     ::-webkit-scrollbar styling. */
+  .ps-scroll::-webkit-scrollbar {
+    width: 10px;
+  }
+  .ps-scroll::-webkit-scrollbar-thumb {
+    background: theme("colors.rail.strong");
+    border: 2px solid theme("colors.cream.50");
+    border-radius: 9999px;
+  }
+}
+
+@keyframes ps-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(112, 192, 56, 0.5);
+  }
+  60% {
+    box-shadow: 0 0 0 8px rgba(112, 192, 56, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(112, 192, 56, 0);
+  }
+}
+
+/* cmdk root needs full width */
+[cmdk-root] {
+  width: 100%;
+}
+[cmdk-input] {
+  outline: none;
+}
