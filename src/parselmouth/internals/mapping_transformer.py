@@ -57,20 +57,17 @@ def transform_mapping_and_save(
         pypi_names = mapping.pypi_normalized_names
 
         if conda_name in compressed_mapping:
-            existing_pypi = compressed_mapping[conda_name].pypi_names
-
-            if existing_pypi != pypi_names:
-                # sometimes mapping don't have path
-                # a good example is
-                # aesara-2.0.0-py36hb100763_0.tar.bz2 will have paths
-                # and aesara-2.7.4-py310hd84b9e8_1.tar.bz2 will not
-
-                if pypi_names:
-                    # sometimes and older version of package has a broken path to dist_info or egg_info
-                    # here we overwrite the newer one with that old and broken
-                    compressed_mapping[conda_name] = CompressedMapping(
-                        pypi_names=pypi_names
-                    )
+            # Different builds of the same conda package can map to
+            # different PyPI distribution names — e.g. some `open3d`
+            # builds map to `open3d` on PyPI, others to `open3d-cpu`.
+            # Take the union so every PyPI name observed across any
+            # build is preserved.
+            existing_pypi = set(compressed_mapping[conda_name].pypi_names or [])
+            new_pypi = set(pypi_names or [])
+            merged = sorted(existing_pypi | new_pypi)
+            compressed_mapping[conda_name] = CompressedMapping(
+                pypi_names=merged or None,
+            )
 
         else:
             # previously we didn't recorded packages that didn't have pypi name
