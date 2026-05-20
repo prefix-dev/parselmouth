@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ExternalLink, Sparkles } from "lucide-react";
+import { Check, ExternalLink, PackagePlus, Sparkles } from "lucide-react";
 import { type Channel } from "../lib/api";
 import {
   lookupCondaToPypi,
@@ -16,6 +16,8 @@ interface Props {
   channel: Channel;
   side: Side;
   name: string;
+  isInPixiMapping?: boolean;
+  onAddToPixiMapping?: (condaName: string) => void;
 }
 
 interface ListItem {
@@ -24,7 +26,13 @@ interface ListItem {
   primary?: boolean;
 }
 
-export function MappingDetail({ channel, side, name }: Props) {
+export function MappingDetail({
+  channel,
+  side,
+  name,
+  isInPixiMapping,
+  onAddToPixiMapping,
+}: Props) {
   const indexQuery = useDerivedIndex(channel);
   const index = indexQuery.index;
   const loading = indexQuery.isLoading;
@@ -87,14 +95,27 @@ export function MappingDetail({ channel, side, name }: Props) {
 
   return (
     <div className="flex flex-col gap-6 sm:gap-5">
-      <div className="flex items-center gap-3 text-sm text-cream-600">
-        <span className="font-display text-lg font-semibold  text-cream-600">
-          You've Selected:
-        </span>
-        <span className="font-display text-lg font-semibold text-ink">
-          {name}
-        </span>
-        <SideBadge kind={side} />
+      <div className="flex flex-col gap-3 text-sm text-cream-600 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-3">
+          <span className="font-display text-lg font-semibold  text-cream-600">
+            You've Selected:
+          </span>
+          <span className="font-display text-lg font-semibold text-ink">
+            {name}
+          </span>
+          <SideBadge kind={side} />
+        </div>
+        {side === "conda" && primaryPypi && onAddToPixiMapping && (
+          <button
+            type="button"
+            disabled={isInPixiMapping}
+            onClick={() => onAddToPixiMapping(name)}
+            className="inline-flex cursor-pointer items-center gap-1.5 self-start rounded-lg border border-conda-border bg-white px-2.5 py-1.5 text-xs font-semibold text-conda-ink hover:bg-conda-bg-soft disabled:cursor-default disabled:opacity-70 sm:ml-auto"
+          >
+            {isInPixiMapping ? <Check size={14} /> : <PackagePlus size={14} />}
+            {isInPixiMapping ? "Added" : "Add to mapping"}
+          </button>
+        )}
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2 sm:gap-4">

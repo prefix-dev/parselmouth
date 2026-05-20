@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Github } from "lucide-react";
+import { Github, WandSparkles } from "lucide-react";
 import { SearchPalette } from "./components/SearchPalette";
 import { MappingDetail } from "./components/MappingDetail";
 import { PackageWaffle } from "./components/PackageWaffle";
 import { HowItWorks } from "./components/HowItWorks";
+import { PixiMappingBuilder } from "./components/PixiMappingBuilder";
 import { type Channel } from "./lib/api";
 import { useDerivedIndex, type Side, type SearchHit } from "./lib/names";
+import { usePixiMappingCart } from "./lib/pixiMappingCart";
 
 interface Selection {
   side: Side;
@@ -57,6 +59,8 @@ export default function App() {
   const [selection, setSelection] = useState<Selection | null>(
     initial.selection,
   );
+  const [showPixiMappingBuilder, setShowPixiMappingBuilder] = useState(false);
+  const pixiMappingCart = usePixiMappingCart(channel);
 
   useEffect(() => {
     writeUrl(channel, selection);
@@ -95,6 +99,20 @@ export default function App() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPixiMappingBuilder((show) => !show)}
+              aria-pressed={showPixiMappingBuilder}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-rail bg-white px-3 text-sm font-medium text-ink hover:bg-cream-50 aria-pressed:border-pypi-border aria-pressed:bg-pypi-bg-soft"
+            >
+              <WandSparkles size={16} />
+              <span className="hidden sm:inline">Pixi mapping</span>
+              {pixiMappingCart.items.length > 0 && (
+                <span className="rounded-full bg-ink px-1.5 py-0.5 font-mono text-[10px] leading-none text-white">
+                  {pixiMappingCart.items.length}
+                </span>
+              )}
+            </button>
             <HowItWorks />
             <a
               href="https://github.com/prefix-dev/parselmouth"
@@ -115,8 +133,21 @@ export default function App() {
             query={query}
             onQueryChange={setQuery}
             onSelect={handleSelect}
+            isCondaAdded={pixiMappingCart.has}
+            onAddConda={pixiMappingCart.add}
           />
         </div>
+
+        {showPixiMappingBuilder && (
+          <div className="mt-6">
+            <PixiMappingBuilder
+              channel={channel}
+              items={pixiMappingCart.items}
+              onRemove={pixiMappingCart.remove}
+              onClear={pixiMappingCart.clear}
+            />
+          </div>
+        )}
 
         <main className="mt-10 flex flex-col">
           {selection ? (
@@ -125,6 +156,10 @@ export default function App() {
               channel={channel}
               side={selection.side}
               name={selection.name}
+              isInPixiMapping={
+                selection.side === "conda" && pixiMappingCart.has(selection.name)
+              }
+              onAddToPixiMapping={pixiMappingCart.add}
             />
           ) : (
             <EmptyHero

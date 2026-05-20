@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Command } from "cmdk";
-import { AlertCircle, Inbox, Loader2, Search } from "lucide-react";
+import { AlertCircle, Check, Inbox, Loader2, PackagePlus, Search } from "lucide-react";
 import { useCompressedMapping, type Channel } from "../lib/api";
 import { useNameSearcher, type SearchHit } from "../lib/names";
 import { ChannelPopover } from "./ChannelPopover";
@@ -12,6 +12,8 @@ interface Props {
   query: string;
   onQueryChange: (q: string) => void;
   onSelect: (hit: SearchHit) => void;
+  isCondaAdded?: (condaName: string) => boolean;
+  onAddConda?: (condaName: string) => void;
 }
 
 export function SearchPalette({
@@ -20,6 +22,8 @@ export function SearchPalette({
   query,
   onQueryChange,
   onSelect,
+  isCondaAdded,
+  onAddConda,
 }: Props) {
   const mappingQuery = useCompressedMapping(channel);
   const searcher = useNameSearcher(channel);
@@ -159,24 +163,50 @@ export function SearchPalette({
                     <div className="px-3.5 pt-1.5 pb-1 font-sans text-[10.5px] font-semibold uppercase tracking-tracker text-cream-400">
                       Matches · {hits.length}
                     </div>
-                    {hits.map((hit) => (
-                      <Command.Item
-                        key={`${hit.side}:${hit.name}`}
-                        value={`${hit.side}:${hit.name}`}
-                        onSelect={() => {
-                          onSelect(hit);
-                          setOpen(false);
-                        }}
-                        className="flex cursor-pointer items-center gap-2.5 px-3.5 py-2 font-display text-sm text-ink aria-selected:bg-cream-100"
-                      >
-                        <span className="font-display font-medium leading-tight">
-                          <HighlightedName name={hit.name} query={trimmed} />
-                        </span>
-                        <span className="ml-auto inline-flex gap-1.5">
-                          <Badge kind={hit.side} />
-                        </span>
-                      </Command.Item>
-                    ))}
+                    {hits.map((hit) => {
+                      const condaMapping =
+                        hit.side === "conda" ? mappingQuery.data?.[hit.name] : null;
+                      const canAddConda = !!condaMapping?.length;
+                      const added =
+                        hit.side === "conda" && !!isCondaAdded?.(hit.name);
+                      return (
+                        <Command.Item
+                          key={`${hit.side}:${hit.name}`}
+                          value={`${hit.side}:${hit.name}`}
+                          onSelect={() => {
+                            onSelect(hit);
+                            setOpen(false);
+                          }}
+                          className="flex cursor-pointer items-center gap-2.5 px-3.5 py-2 font-display text-sm text-ink aria-selected:bg-cream-100"
+                        >
+                          <span className="font-display font-medium leading-tight">
+                            <HighlightedName name={hit.name} query={trimmed} />
+                          </span>
+                          <span className="ml-auto inline-flex items-center gap-1.5">
+                            {hit.side === "conda" && onAddConda && canAddConda && (
+                              <button
+                                type="button"
+                                disabled={added}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  onAddConda(hit.name);
+                                }}
+                                className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-conda-border bg-white px-1.5 py-0.5 font-sans text-[11px] font-semibold text-conda-ink hover:bg-conda-bg-soft disabled:cursor-default disabled:opacity-70"
+                              >
+                                {added ? <Check size={12} /> : <PackagePlus size={12} />}
+                                {added ? "Added" : "Add to mapping"}
+                              </button>
+                            )}
+                            <Badge kind={hit.side} />
+                          </span>
+                        </Command.Item>
+                      );
+                    })}
                   </div>
                   <div className="flex items-center justify-between border-t border-rail px-3.5 py-1.5">
                     <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-cream-400">
