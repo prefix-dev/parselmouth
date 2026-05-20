@@ -18,11 +18,7 @@ interface Row {
   conda: string[];
 }
 
-export function VersionHistory({
-  channel,
-  pypiName,
-  condaName,
-}: Props) {
+export function VersionHistory({ channel, pypiName, condaName }: Props) {
   const detail = usePypiDetail(channel, pypiName);
   const normalizedPypi = pypiName ? normalizePypi(pypiName) : null;
 
@@ -42,8 +38,7 @@ export function VersionHistory({
 
   const items = useMemo(() => {
     const out: Array<
-      | { kind: "row"; row: Row }
-      | { kind: "drift"; from: Row; to: Row }
+      { kind: "row"; row: Row } | { kind: "drift"; from: Row; to: Row }
     > = [];
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
@@ -60,13 +55,16 @@ export function VersionHistory({
   const headerPypiName = pypiName ?? "—";
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col">
+    <section className="flex flex-col">
       <header className="flex items-end justify-between gap-4 border-b border-rail px-1 py-3 flex-shrink-0">
         <div className="flex flex-col gap-1">
-          <span className="font-sans text-2xs font-semibold uppercase tracking-eyebrow text-cream-600">
+          <span className="font-display text-xl font-semibold">
             Version history
           </span>
-          <span className="inline-flex items-center gap-2 font-mono text-sm leading-tight text-ink">
+          <p className="flex-shrink-0 text-xs text-cream-400">
+            Only releases with a known PyPI mapping are shown.
+          </p>
+          <span className="inline-flex mt-5 items-center gap-2 font-mono text-sm leading-tight text-ink">
             <span className="inline-flex items-center gap-1.5">
               <CondaLogo size={14} />
               <a
@@ -79,7 +77,7 @@ export function VersionHistory({
               </a>
             </span>
             <span aria-hidden="true" className="text-cream-400">
-              ↔
+              to
             </span>
             <span className="inline-flex items-center gap-1.5">
               <PypiLogo size={14} />
@@ -103,18 +101,18 @@ export function VersionHistory({
           {detail.data && rows.length > 0 && (
             <>
               <span className="font-mono">
-                {rows.length} {rows.length === 1 ? "release" : "releases"}
+                {rows.length} {rows.length === 1 ? "release:" : "releases:"}
               </span>
-              <span className="text-cream-400" aria-hidden="true">·</span>
               <a
                 className="inline-flex items-center gap-1.5 text-cream-600 hover:text-pypi-dot"
                 href={`https://conda-mapping.prefix.dev/pypi-to-conda-v1/${channel}/${normalizedPypi}.json`}
                 target="_blank"
                 rel="noreferrer"
               >
-                <span className="font-mono">
+                <span className="hidden font-mono sm:inline">
                   pypi-to-conda-v1/{channel}/{normalizedPypi}.json
                 </span>
+                <span className="font-mono sm:hidden">source</span>
                 <ExternalLink size={12} className="text-cream-400" />
               </a>
             </>
@@ -137,49 +135,50 @@ export function VersionHistory({
 
       {detail.data && rows.length > 0 && (
         <>
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-rail">
-          <div className="ps-scroll min-h-0 flex-1 overflow-y-auto">
-          <table className="w-full border-collapse font-mono text-[13px]">
-            <thead>
-              <tr>
-                <Th className="w-[28%]">pypi version</Th>
-                <Th className="w-[72%]">conda name</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((it, i) =>
-                it.kind === "drift" ? (
-                  <DriftRow key={`d-${i}`} from={it.from} to={it.to} />
-                ) : (
-                  <TableRow
-                    key={`r-${i}-${it.row.pypiVersion}`}
-                    row={it.row}
-                    channel={channel}
-                    pypiName={headerPypiName}
-                  />
-                ),
-              )}
-            </tbody>
-          </table>
+          <div className="flex flex-col overflow-hidden rounded-lg border border-rail">
+            <div className="ps-scroll max-h-[70dvh] overflow-y-auto">
+              <table className="w-full border-collapse font-mono text-[13px]">
+                <thead>
+                  <tr>
+                    <Th className="w-[40%]">PyPI Version</Th>
+                    <Th className="w-[60%]">Conda Name</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it, i) =>
+                    it.kind === "drift" ? (
+                      <DriftRow key={`d-${i}`} from={it.from} to={it.to} />
+                    ) : (
+                      <TableRow
+                        key={`r-${i}-${it.row.pypiVersion}`}
+                        row={it.row}
+                        channel={channel}
+                        pypiName={headerPypiName}
+                      />
+                    ),
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-        <p className="mt-2 flex-shrink-0 px-1 text-[11.5px] text-cream-400">
-          Only releases with a known PyPI mapping are shown. Conda releases
-          without a known PyPI counterpart aren't surfaced by the parselmouth
-          v1 endpoint.
-        </p>
         </>
       )}
     </section>
   );
 }
 
-function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function Th({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <th
       scope="col"
       className={
-        "sticky top-0 z-10 border-b border-rail bg-cream-100 px-4 py-2.5 text-left font-sans text-2xs font-semibold uppercase tracking-tracker text-cream-700 " +
+        "sticky top-0 z-10 border-b border-rail bg-cream-100 px-4 py-2.5 text-left font-display text-sm font-bold" +
         className
       }
     >
@@ -297,8 +296,8 @@ function ErrorState({
           <span className="font-mono">{name}</span> on{" "}
           <span className="font-mono">{channel}</span>, or the request was
           blocked. This usually means the package was vendored without a direct
-          conda alias, the next pipeline run hasn't completed, or CORS isn't
-          yet enabled on the conda-mapping.prefix.dev bucket.
+          conda alias, the next pipeline run hasn't completed, or CORS isn't yet
+          enabled on the conda-mapping.prefix.dev bucket.
         </p>
         <p className="mt-1.5 max-w-[60ch] font-mono text-[11px] text-cream-400">
           {message}

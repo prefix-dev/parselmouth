@@ -40,9 +40,9 @@ export function ChannelPopover({ value, onChange }: Props) {
         <span className="font-sans text-[9.5px] font-semibold uppercase leading-none tracking-eyebrow text-cream-400">
           channel
         </span>
-        <span className="mt-1 inline-flex items-center gap-1 font-mono text-[13.5px] font-medium leading-tight text-ink">
+        <span className="mt-1 inline-flex items-center gap-1 font-display text-[13.5px] font-medium leading-tight text-ink">
           <span>{value}</span>
-          <ChevronDown size={13} strokeWidth={2.25} className="text-cream-600" />
+          <ChevronDown size={13} strokeWidth={3} className="text-cream-600" />
         </span>
       </button>
 
@@ -61,7 +61,7 @@ export function ChannelPopover({ value, onChange }: Props) {
                 onChange(c.value);
                 setOpen(false);
               }}
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left font-mono text-[13.5px] text-ink hover:bg-cream-100 aria-checked:bg-cream-100 aria-checked:font-medium"
+              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left font-serif text-[13.5px] text-ink hover:bg-cream-100 aria-checked:bg-cream-100 aria-checked:font-medium"
             >
               <span>{c.label}</span>
               {c.value === value && (

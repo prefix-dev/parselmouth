@@ -12,6 +12,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Moranga";
+  src: url("/parselmouth/fonts/Moranga-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   html,
   body,
@@ -49,6 +57,17 @@
   }
   .ps-drift-cap {
     @apply relative z-10 ml-6 inline-flex items-center gap-1.5 bg-cream-50 px-2.5 py-0.5 text-[10.5px] leading-snug text-cream-600;
+  }
+
+  /* Mapped waffle block — diagonal split of conda-green and PyPI-blue, since a
+     mapped package lives in both ecosystems. A hard-stop linear-gradient is
+     not expressible as a clean Tailwind utility. */
+  .ps-waffle-mapped {
+    background-image: linear-gradient(
+      135deg,
+      theme("colors.conda.dot") 50%,
+      theme("colors.pypi.dot") 50%
+    );
   }
 
   /* Custom scrollbar for the version table — Tailwind doesn't expose
