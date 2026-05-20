@@ -29,28 +29,42 @@ export function MappingDetail({ channel, side, name }: Props) {
   const index = indexQuery.index;
   const loading = indexQuery.isLoading;
 
-  // We can't distinguish vendoring from historical drift in the pairs data
-  // (both look like "this name maps to N other names"), so we just show the
-  // list with the selected item flagged. No "direct"/"vendors" labels.
+  // The PyPI name this selection resolves to. For a conda-side selection it is
+  // the conda package's first mapped PyPI name; for a pypi-side selection it is
+  // the normalized input.
+  const primaryPypi = useMemo(() => {
+    if (side === "pypi") return normalizePypi(name);
+    if (!index) return null;
+    return lookupCondaToPypi(index, name)?.[0] ?? null;
+  }, [index, side, name]);
+
+  // Conda card lists every conda package that maps to the same PyPI name, so
+  // sibling packages (e.g. `pytorch` and `pytorch-cpu`, both mapping to
+  // `torch`) all appear. The selected conda package is flagged.
   const condaList: ListItem[] = useMemo(() => {
-    if (!index)
-      return side === "conda" ? [{ name, primary: true, context: "selected" }] : [];
-    if (side === "conda") {
-      return [{ name, primary: true, context: "selected" }];
+    if (!index || !primaryPypi) {
+      return side === "conda"
+        ? [{ name, primary: true, context: "selected" }]
+        : [];
     }
-    const condaNames = lookupPypiToConda(index, normalizePypi(name));
+    const condaNames = lookupPypiToConda(index, primaryPypi);
     return condaNames.map((c, i) => ({
       name: c,
-      primary: i === 0,
+      primary: side === "conda" ? c === name : i === 0,
+      context: side === "conda" && c === name ? "selected" : undefined,
     }));
-  }, [index, side, name]);
+  }, [index, primaryPypi, side, name]);
 
   const pypiList: ListItem[] = useMemo(() => {
     if (side === "pypi") {
       const normalized = normalizePypi(name);
       const showNorm = normalized !== name;
       return [
-        { name: showNorm ? normalized : name, primary: true, context: "selected" },
+        {
+          name: showNorm ? normalized : name,
+          primary: true,
+          context: "selected",
+        },
       ];
     }
     if (!index) return [];
@@ -58,9 +72,7 @@ export function MappingDetail({ channel, side, name }: Props) {
     return pys.map((p, i) => ({ name: p, primary: i === 0 }));
   }, [index, side, name]);
 
-  const primaryPypi =
-    side === "pypi" ? normalizePypi(name) : pypiList[0]?.name ?? null;
-  const primaryConda = side === "conda" ? name : condaList[0]?.name ?? null;
+  const primaryConda = side === "conda" ? name : (condaList[0]?.name ?? null);
 
   // PEP 503 normalization only: when the user's deep-linked PyPI input
   // differs from its canonical form (e.g. ?q=Foo_Bar → `foo-bar`), the
@@ -74,26 +86,27 @@ export function MappingDetail({ channel, side, name }: Props) {
       : null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5">
+    <div className="flex flex-col gap-6 sm:gap-5">
       <div className="flex items-center gap-3 text-sm text-cream-600">
-        <span className="font-sans text-2xs font-semibold uppercase tracking-eyebrow text-cream-600">
-          selection
+        <span className="font-display text-lg font-semibold  text-cream-600">
+          You've Selected:
         </span>
-        <span className="font-mono text-sm text-ink">{name}</span>
+        <span className="font-display text-lg font-semibold text-ink">
+          {name}
+        </span>
         <SideBadge kind={side} />
-        <span className="ml-auto hidden font-mono text-[11.5px] text-cream-400 md:inline-block">
-          ?channel={channel}&q={name}&dir={side}
-        </span>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2 sm:gap-4">
         <PackageCard
           kind="conda"
           items={condaList}
           loading={loading && side === "pypi"}
           hrefFor={(n) => condaPackageUrl(channel, n)}
           emptyHint={
-            side === "pypi" ? "No conda packages ship this PyPI name yet." : undefined
+            side === "pypi"
+              ? "No conda packages ship this PyPI name yet."
+              : undefined
           }
         />
         <PackageCard
@@ -118,12 +131,12 @@ export function MappingDetail({ channel, side, name }: Props) {
         />
       ) : (
         <div className="px-1 pt-6 text-[13px] text-cream-600">
-          <div className="font-sans text-[13.5px] font-semibold text-ink">
+          <div className="font-display text-[13.5px] font-semibold text-ink">
             No PyPI version detail available
           </div>
           <p className="mt-1.5 max-w-[60ch] leading-relaxed">
-            This conda package has no PyPI mapping recorded — there's nothing
-            to look up.
+            This conda package has no PyPI mapping recorded — there's nothing to
+            look up.
           </p>
         </div>
       )}
@@ -222,8 +235,14 @@ function PackageCard({
           <div className="px-2.5 pb-1 pt-2.5">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-rail bg-cream-100 px-2 py-0.5 text-[11.5px] text-cream-600">
               <Sparkles size={12} />
-              normalized: <code className="font-mono text-[11px] text-ink">{normalized.from}</code> →{" "}
-              <code className="font-mono text-[11px] text-ink">{normalized.to}</code>
+              normalized:{" "}
+              <code className="font-mono text-[11px] text-ink">
+                {normalized.from}
+              </code>{" "}
+              →{" "}
+              <code className="font-mono text-[11px] text-ink">
+                {normalized.to}
+              </code>
             </span>
           </div>
         )}

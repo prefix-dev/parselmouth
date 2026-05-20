@@ -56,7 +56,10 @@ export function SearchPalette({
   }, []);
 
   const trimmed = query.trim();
-  const hits = useMemo(() => searcher?.search(trimmed, 30) ?? [], [searcher, trimmed]);
+  const hits = useMemo(
+    () => searcher?.search(trimmed, 30) ?? [],
+    [searcher, trimmed],
+  );
 
   const loading = mappingQuery.isLoading;
   const error = mappingQuery.error;
@@ -65,12 +68,12 @@ export function SearchPalette({
   const dropdownState: "results" | "empty" | "error" | "hidden" = !open
     ? "hidden"
     : error
-    ? "error"
-    : trimmed === ""
-    ? "hidden"
-    : hits.length === 0 && !loading
-    ? "empty"
-    : "results";
+      ? "error"
+      : trimmed === ""
+        ? "hidden"
+        : hits.length === 0 && !loading
+          ? "empty"
+          : "results";
 
   return (
     <div ref={wrapRef} className="relative">
@@ -101,7 +104,7 @@ export function SearchPalette({
               loading ? "Loading mapping index…" : "numpy, requests, arm-pyart…"
             }
             disabled={loading || !!error}
-            className="min-w-0 flex-1 border-0 bg-transparent font-mono text-[15px] tracking-[-0.01em] text-ink outline-none placeholder:text-cream-400 disabled:opacity-70"
+            className="min-w-0 flex-1 border-0 bg-transparent font-display text-[15px] text-ink outline-none placeholder:text-cream-400 disabled:opacity-70"
           />
           <kbd className="mr-3.5 hidden self-center whitespace-nowrap rounded-[5px] border border-b-2 border-rail bg-white px-1.5 py-0.5 font-mono text-[11px] font-medium leading-none text-cream-600 sm:inline-flex">
             ⌘K
@@ -110,85 +113,85 @@ export function SearchPalette({
 
         {dropdownState !== "hidden" && (
           <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-xl border border-rail bg-white shadow-dropdown">
-          <Command.List className="max-h-[420px] overflow-y-auto">
-            {dropdownState === "error" && (
-              <div className="flex items-start gap-3 border-b border-error-border bg-error-bg px-4 py-3">
-                <AlertCircle
-                  size={16}
-                  className="mt-0.5 shrink-0 text-error-accent"
-                />
-                <div>
-                  <div className="text-[13px] font-semibold text-error-ink">
-                    Failed to load mapping index
-                  </div>
-                  <div className="mt-0.5 font-mono text-xs text-error-ink">
-                    {String(error)}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => mappingQuery.refetch()}
-                    className="mt-2 cursor-pointer rounded-lg border border-error-border bg-white px-2.5 py-1 text-xs font-medium text-error-ink"
-                  >
-                    Retry
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {dropdownState === "empty" && (
-              <Command.Empty>
-                <div className="px-4 py-7 text-center">
-                  <Inbox size={22} className="mx-auto text-cream-400" />
-                  <div className="mt-2 font-mono text-[13px] text-ink">
-                    No matches for{" "}
-                    <span className="text-ink">"{trimmed}"</span>
-                  </div>
-                  <div className="mt-1 text-xs text-cream-600">
-                    Try a substring, or switch channel.
-                  </div>
-                </div>
-              </Command.Empty>
-            )}
-
-            {dropdownState === "results" && (
-              <>
-                <div className="py-1.5">
-                  <div className="px-3.5 pt-1.5 pb-1 font-sans text-[10.5px] font-semibold uppercase tracking-tracker text-cream-400">
-                    Matches · {hits.length}
-                  </div>
-                  {hits.map((hit) => (
-                    <Command.Item
-                      key={`${hit.side}:${hit.name}`}
-                      value={`${hit.side}:${hit.name}`}
-                      onSelect={() => {
-                        onSelect(hit);
-                        setOpen(false);
-                      }}
-                      className="flex cursor-pointer items-center gap-2.5 px-3.5 py-2 font-mono text-sm tracking-[-0.01em] text-ink aria-selected:bg-cream-100"
+            <Command.List className="max-h-[420px] overflow-y-auto">
+              {dropdownState === "error" && (
+                <div className="flex items-start gap-3 border-b border-error-border bg-error-bg px-4 py-3">
+                  <AlertCircle
+                    size={16}
+                    className="mt-0.5 shrink-0 text-error-accent"
+                  />
+                  <div>
+                    <div className="text-[13px] font-semibold text-error-ink">
+                      Failed to load mapping index
+                    </div>
+                    <div className="mt-0.5 font-mono text-xs text-error-ink">
+                      {String(error)}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => mappingQuery.refetch()}
+                      className="mt-2 cursor-pointer rounded-lg border border-error-border bg-white px-2.5 py-1 text-xs font-medium text-error-ink"
                     >
-                      <span className="font-mono">
-                        <HighlightedName name={hit.name} query={trimmed} />
-                      </span>
-                      <span className="ml-auto inline-flex gap-1.5">
-                        <Badge kind={hit.side} />
-                      </span>
-                    </Command.Item>
-                  ))}
+                      Retry
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between border-t border-rail px-3.5 py-1.5">
-                  <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-cream-400">
-                    <Kbd>↵</Kbd> select <Sep />
-                    <Kbd>↑</Kbd>
-                    <Kbd>↓</Kbd> nav <Sep />
-                    <Kbd>esc</Kbd> close
-                  </span>
-                  <span className="text-[11px] text-cream-400">
-                    {channel} · {indexCount.toLocaleString()} names indexed
-                  </span>
-                </div>
-              </>
-            )}
-          </Command.List>
+              )}
+
+              {dropdownState === "empty" && (
+                <Command.Empty>
+                  <div className="px-4 py-7 text-center">
+                    <Inbox size={22} className="mx-auto text-cream-400" />
+                    <div className="mt-2 font-mono text-[13px] text-ink">
+                      No matches for{" "}
+                      <span className="text-ink">"{trimmed}"</span>
+                    </div>
+                    <div className="mt-1 text-xs text-cream-600">
+                      Try a substring, or switch channel.
+                    </div>
+                  </div>
+                </Command.Empty>
+              )}
+
+              {dropdownState === "results" && (
+                <>
+                  <div className="py-1.5">
+                    <div className="px-3.5 pt-1.5 pb-1 font-sans text-[10.5px] font-semibold uppercase tracking-tracker text-cream-400">
+                      Matches · {hits.length}
+                    </div>
+                    {hits.map((hit) => (
+                      <Command.Item
+                        key={`${hit.side}:${hit.name}`}
+                        value={`${hit.side}:${hit.name}`}
+                        onSelect={() => {
+                          onSelect(hit);
+                          setOpen(false);
+                        }}
+                        className="flex cursor-pointer items-center gap-2.5 px-3.5 py-2 font-display text-sm text-ink aria-selected:bg-cream-100"
+                      >
+                        <span className="font-display font-medium leading-tight">
+                          <HighlightedName name={hit.name} query={trimmed} />
+                        </span>
+                        <span className="ml-auto inline-flex gap-1.5">
+                          <Badge kind={hit.side} />
+                        </span>
+                      </Command.Item>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between border-t border-rail px-3.5 py-1.5">
+                    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-cream-400">
+                      <Kbd>↵</Kbd> select <Sep />
+                      <Kbd>↑</Kbd>
+                      <Kbd>↓</Kbd> nav <Sep />
+                      <Kbd>esc</Kbd> close
+                    </span>
+                    <span className="text-[11px] text-cream-400">
+                      {channel} · {indexCount.toLocaleString()} names indexed
+                    </span>
+                  </div>
+                </>
+              )}
+            </Command.List>
           </div>
         )}
       </Command>
