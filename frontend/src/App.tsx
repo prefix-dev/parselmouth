@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Github } from "lucide-react";
 import { SearchPalette } from "./components/SearchPalette";
 import { MappingDetail } from "./components/MappingDetail";
+import { PackageWaffle } from "./components/PackageWaffle";
 import { type Channel } from "./lib/api";
 import { useDerivedIndex, type Side, type SearchHit } from "./lib/names";
 
@@ -86,9 +87,9 @@ export default function App() {
               className="self-start cursor-pointer rounded-md font-display text-[44px] font-light leading-none tracking-[-0.015em] text-ink hover:text-ink-deep focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               aria-label="parselmouth — back to home"
             >
-              parselmouth
+              Parselmouth
             </button>
-            <p className="max-w-[54ch] text-base leading-snug text-cream-600">
+            <p className="max-w-[54ch] text-sm leading-snug text-cream-600">
               Browse the conda to pypi package name mapping.
             </p>
           </div>
@@ -130,8 +131,6 @@ export default function App() {
           )}
         </main>
       </div>
-
-      <Footer channel={channel} />
     </div>
   );
 }
@@ -162,8 +161,16 @@ function EmptyHero({
   }, [index]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="grid sm:grid-cols-[auto_auto] grid-cols-1 gap-6">
       <section className="rounded-2xl border border-rail bg-white p-8 shadow-card sm:px-9 sm:py-8">
+        <PackageWaffle
+          channel={channel}
+          condaTotal={stats.conda}
+          mapped={stats.mappedConda}
+          pypiNames={stats.pypi}
+        />
+      </section>
+      <section className="rounded-2xl border border-rail bg-white p-8 shadow-card sm:px-9 sm:py-8 flex flex-col justify-center">
         <h2 className="m-0 font-display text-[30px] font-light leading-tight text-ink">
           Search a package name.
         </h2>
@@ -196,69 +203,6 @@ function EmptyHero({
           ))}
         </div>
       </section>
-      <section className="rounded-2xl border border-rail bg-white p-2 shadow-card sm:px-9 sm:py-8">
-        <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4">
-          <Stat n="hourly" showPound={false} label="pipeline refresh" />
-          <Stat
-            n={stats.conda?.toLocaleString() ?? "—"}
-            label={`${channel} conda names`}
-          />
-          <Stat n={stats.pypi?.toLocaleString() ?? "—"} label="PyPI names" />
-          <Stat
-            n={stats.mappedConda?.toLocaleString() ?? "—"}
-            label="mapped to PyPI"
-          />
-        </div>
-      </section>
     </div>
-  );
-}
-
-function Stat({
-  n,
-  label,
-  hint,
-  className,
-  showPound = true,
-}: {
-  n: string;
-  label: string;
-  hint?: string;
-  className?: string;
-  showPound?: boolean;
-}) {
-  return (
-    <div className={"flex min-w-0 flex-col " + (className ?? "")}>
-      <div className="font-display text-3xl font-light leading-tight tracking-[-0.01em] text-ink">
-        {showPound ? "# " : ""}
-        {n}
-      </div>
-      <div className="mt-1 inline-flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-ink">
-        {label}
-      </div>
-      {hint && (
-        <div className="mt-0.5 font-sans text-[11.5px] leading-snug text-cream-400">
-          {hint}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Footer({ channel }: { channel: Channel }) {
-  return (
-    <footer className="mx-auto w-full max-w-canvas px-5 pb-8 sm:px-10">
-      <div className="text-xs text-cream-400">
-        Data from{" "}
-        <code className="rounded bg-cream-100 px-1 py-px font-mono text-cream-600">
-          conda-mapping.prefix.dev
-        </code>
-        , updated hourly by the parselmouth pipeline. Channel{" "}
-        <code className="rounded bg-cream-100 px-1 py-px font-mono text-cream-600">
-          {channel}
-        </code>
-        .
-      </div>
-    </footer>
   );
 }
