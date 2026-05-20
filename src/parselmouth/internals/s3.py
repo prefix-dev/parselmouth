@@ -32,6 +32,14 @@ RELATIONS_TABLE_FILE = "relations.jsonl.gz"
 RELATIONS_METADATA_FILE = "metadata.json"
 PYPI_TO_CONDA = "pypi-to-conda"
 
+# Legacy compressed mapping files (consumed by pixi and other downstream tools).
+# Published under conda-mapping.prefix.dev as a trusted alternative to
+# raw.githubusercontent.com (see prefix-dev/pixi#5980).
+LEGACY_COMPRESSED_PREFIX = "compressed-v0"
+LEGACY_COMPRESSED_FILE = "compressed_mapping.json"
+LEGACY_COMPRESSED_CACHE_CONTROL = "max-age=3600, public"
+LEGACY_COMPRESSED_CONTENT_TYPE = "application/json"
+
 
 class MappingEntry(BaseModel):
     """
@@ -359,6 +367,46 @@ class S3:
             # Log unexpected errors but return False to be safe
             logging.warning(f"Unexpected error checking PyPI lookup existence: {e}")
             return False
+
+    # ===== Legacy compressed mapping uploads =====
+
+    def upload_legacy_compressed_mapping(self, data: bytes) -> None:
+        """
+        Upload the top-level legacy compressed mapping consumed by pixi.
+
+        Key: compressed-v0/compressed_mapping.json
+        """
+        key = f"{LEGACY_COMPRESSED_PREFIX}/{LEGACY_COMPRESSED_FILE}"
+        self._s3_client.upload_fileobj(
+            io.BytesIO(data),
+            self.bucket_name,
+            key,
+            ExtraArgs={
+                "CacheControl": LEGACY_COMPRESSED_CACHE_CONTROL,
+                "ContentType": LEGACY_COMPRESSED_CONTENT_TYPE,
+            },
+        )
+
+    def upload_channel_compressed_mapping(
+        self,
+        data: bytes,
+        channel: SupportedChannels,
+    ) -> None:
+        """
+        Upload the per-channel legacy compressed mapping.
+
+        Key: compressed-v0/{channel}/compressed_mapping.json
+        """
+        key = f"{LEGACY_COMPRESSED_PREFIX}/{channel}/{LEGACY_COMPRESSED_FILE}"
+        self._s3_client.upload_fileobj(
+            io.BytesIO(data),
+            self.bucket_name,
+            key,
+            ExtraArgs={
+                "CacheControl": LEGACY_COMPRESSED_CACHE_CONTROL,
+                "ContentType": LEGACY_COMPRESSED_CONTENT_TYPE,
+            },
+        )
 
     def get_relations_table(
         self,
