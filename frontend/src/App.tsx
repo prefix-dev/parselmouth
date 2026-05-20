@@ -3,6 +3,7 @@ import { Github } from "lucide-react";
 import { SearchPalette } from "./components/SearchPalette";
 import { MappingDetail } from "./components/MappingDetail";
 import { PackageWaffle } from "./components/PackageWaffle";
+import { HowItWorks } from "./components/HowItWorks";
 import { type Channel } from "./lib/api";
 import { useDerivedIndex, type Side, type SearchHit } from "./lib/names";
 
@@ -84,7 +85,7 @@ export default function App() {
             <button
               type="button"
               onClick={handleHome}
-              className="self-start cursor-pointer rounded-md font-display text-[44px] font-light leading-none tracking-[-0.015em] text-ink hover:text-ink-deep focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="self-start cursor-pointer rounded-md font-display text-[34px] font-light leading-none tracking-[-0.015em] text-ink hover:text-ink-deep focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:text-[44px]"
               aria-label="parselmouth — back to home"
             >
               Parselmouth
@@ -93,15 +94,18 @@ export default function App() {
               Browse the conda to pypi package name mapping.
             </p>
           </div>
-          <a
-            href="https://github.com/prefix-dev/parselmouth"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="View parselmouth on GitHub"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rail bg-white text-ink"
-          >
-            <Github size={18} />
-          </a>
+          <div className="flex shrink-0 items-center gap-2">
+            <HowItWorks />
+            <a
+              href="https://github.com/prefix-dev/parselmouth"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="View parselmouth on GitHub"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rail bg-white text-ink"
+            >
+              <Github size={18} />
+            </a>
+          </div>
         </header>
 
         <div className="mt-8">

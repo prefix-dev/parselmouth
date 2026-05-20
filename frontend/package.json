@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.6",
     "@tanstack/react-query": "^5.62.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.4",
