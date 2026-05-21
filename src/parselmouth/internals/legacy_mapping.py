@@ -43,9 +43,7 @@ def format_and_save_mapping(
         try:
             s3_client.upload_legacy_compressed_mapping(payload)
         except (ClientError, BotoCoreError, NoCredentialsError) as exc:
-            logging.warning(
-                "Failed to upload legacy compressed mapping to R2: %s", exc
-            )
+            logging.warning("Failed to upload legacy compressed mapping to R2: %s", exc)
 
 
 def transform_mapping_in_grayskull_format(existing_mapping: IndexMapping):
