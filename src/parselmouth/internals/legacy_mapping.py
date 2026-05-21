@@ -1,5 +1,7 @@
 import json
+import logging
 from typing import Mapping
+from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 from deprecated import deprecated
 
 from pydantic import BaseModel
@@ -33,8 +35,15 @@ def format_and_save_mapping(
 
         map_to_save[conda_name] = pypi_name
 
-    with open(f"files/{mapping_name}.json", "w") as map_file:
-        json.dump(map_to_save, map_file)
+    payload = json.dumps(map_to_save).encode("utf-8")
+    with open(f"files/{mapping_name}.json", "wb") as map_file:
+        map_file.write(payload)
+
+    if mapping_name == "compressed_mapping":
+        try:
+            s3_client.upload_legacy_compressed_mapping(payload)
+        except (ClientError, BotoCoreError, NoCredentialsError) as exc:
+            logging.warning("Failed to upload legacy compressed mapping to R2: %s", exc)
 
 
 def transform_mapping_in_grayskull_format(existing_mapping: IndexMapping):

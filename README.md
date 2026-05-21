@@ -139,6 +139,11 @@ There are currently two mappings that are online, one of which is work in progre
 2. **(WIP)** The **PyPI - Conda** name mapping that maps a PyPI package to it's known Conda counterpart. This only works for packages that are available on the conda channels that it references. This is available at `https://conda-mapping.prefix.dev/pypi-to-conda-v1/{channel}/{pypi-normalized-name}.json` where the channel is the name of the channel and the `{pypi-normalized-name}` is the normalized name of the package on PyPI.
    E.g for `requests` we can use `https://conda-mapping.prefix.dev/pypi-to-conda-v1/conda-forge/requests.json`, which will give you the corresponding json.
 
+3. The **legacy compressed mapping** (a flat `{conda_name: pypi_name}` dict, consumed today by `pixi` and other tooling). The same content is also committed to `files/compressed_mapping.json` in this repo, but the R2 URL is the recommended trusted source for clients that cannot reach `raw.githubusercontent.com`.
+
+   - Top-level (conda-forge): `https://conda-mapping.prefix.dev/compressed-v0/compressed_mapping.json`
+   - Per channel: `https://conda-mapping.prefix.dev/compressed-v0/{channel}/compressed_mapping.json` (e.g. `conda-forge`, `bioconda`, `pytorch`, `tango-controls`)
+
 ## Infrastructure and Storage Architecture
 
 ### Storage Locations
@@ -156,6 +161,10 @@ The main package mapping data is stored in Cloudflare R2 (S3-compatible storage)
 - `relations-v1/{channel}/relations.jsonl.gz` - Master relations table (JSONL format, gzipped)
 - `relations-v1/{channel}/metadata.json` - Metadata about the relations table
 - `pypi-to-conda-v1/{channel}/{pypi_name}.json` - Fast PyPI lookup files derived from relations table
+
+**Legacy Compressed Mappings (compressed-v0):**
+- `compressed-v0/compressed_mapping.json` - Top-level conda-forge compressed mapping (the file `pixi` fetches)
+- `compressed-v0/{channel}/compressed_mapping.json` - Per-channel compressed mappings (conda-forge, bioconda, pytorch, tango-controls)
 
 #### 2. Git Repository Files
 The `files/` directory in the repository stores compressed mappings that are committed to version control:

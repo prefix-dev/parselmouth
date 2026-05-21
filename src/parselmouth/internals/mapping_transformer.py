@@ -1,6 +1,8 @@
 import json
+import logging
 import os.path
 
+from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 from pydantic import BaseModel
 from parselmouth.internals.channels import SupportedChannels
 from parselmouth.internals.s3 import IndexMapping, s3_client
@@ -38,8 +40,17 @@ def _format_and_save_mapping(
         FILES_DIR, FILES_VERSION, channel, f"{mapping_name}.json"
     )
 
-    with open(mapping_location, "w") as map_file:
-        json.dump(map_to_save, map_file)
+    payload = json.dumps(map_to_save).encode("utf-8")
+    with open(mapping_location, "wb") as map_file:
+        map_file.write(payload)
+
+    if mapping_name == "compressed_mapping":
+        try:
+            s3_client.upload_channel_compressed_mapping(payload, channel)
+        except (ClientError, BotoCoreError, NoCredentialsError) as exc:
+            logging.warning(
+                "Failed to upload compressed mapping for %s to R2: %s", channel, exc
+            )
 
 
 def transform_mapping_and_save(
