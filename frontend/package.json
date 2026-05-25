@@ -13,6 +13,7 @@
     "@tanstack/react-query": "^5.62.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.4",
+    "fastest-levenshtein": "^1.0.16",
     "fuse.js": "^7.0.0",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",

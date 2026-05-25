@@ -1,5 +1,6 @@
-import { useMemo } from "react";
-import { Check, ExternalLink, PackagePlus, Sparkles } from "lucide-react";
+import { useMemo, useState } from "react";
+import { distance as levenshteinDistance } from "fastest-levenshtein";
+import { Check, ChevronDown, ExternalLink, PackagePlus, Sparkles } from "lucide-react";
 import { type Channel } from "../lib/api";
 import {
   lookupCondaToPypi,
@@ -56,11 +57,29 @@ export function MappingDetail({
         : [];
     }
     const condaNames = lookupPypiToConda(index, primaryPypi);
-    return condaNames.map((c, i) => ({
-      name: c,
-      primary: side === "conda" ? c === name : i === 0,
-      context: side === "conda" && c === name ? "selected" : undefined,
-    }));
+    const directName = side === "conda" ? name : primaryPypi;
+    const items = condaNames.map((c, i) => {
+      const direct = c === directName;
+      return {
+        name: c,
+        primary: direct || (side === "pypi" && i === 0 && !condaNames.includes(directName)),
+        context:
+          side === "conda" && direct
+            ? "selected"
+            : side === "pypi" && direct
+              ? "name match"
+              : undefined,
+      };
+    });
+
+    // The reverse index is alphabetic by conda package name, which can bury the
+    // best answer (e.g. pypi::numpy after hist-base). Keep exact selected/direct
+    // matches first, then order the remaining observations by name similarity.
+    return items.sort((a, b) => {
+      const exactDelta = Number(b.name === directName) - Number(a.name === directName);
+      if (exactDelta !== 0) return exactDelta;
+      return nameDistance(a.name, directName) - nameDistance(b.name, directName);
+    });
   }, [index, primaryPypi, side, name]);
 
   const pypiList: ListItem[] = useMemo(() => {
@@ -124,6 +143,16 @@ export function MappingDetail({
           items={condaList}
           loading={loading && side === "pypi"}
           hrefFor={(n) => condaPackageUrl(channel, n)}
+          note={
+            primaryPypi
+              ? side === "conda"
+                ? `Selected package, plus other packages that also report PyPI metadata for ${primaryPypi}.`
+                : `Packages that report PyPI metadata for ${primaryPypi}.`
+              : undefined
+          }
+          collapseSecondary
+          secondaryLabel="other related conda packages"
+          secondaryHint="These packages contain metadata for this PyPI name, but may just include it as a dependency or bundled file; they are not necessarily aliases."
           emptyHint={
             side === "pypi"
               ? "No conda packages ship this PyPI name yet."
@@ -165,6 +194,18 @@ export function MappingDetail({
   );
 }
 
+function nameDistance(a: string, b: string): number {
+  const left = normalizePackageName(a);
+  const right = normalizePackageName(b);
+  if (left === right) return 0;
+
+  return levenshteinDistance(left, right) / Math.max(left.length, right.length, 1);
+}
+
+function normalizePackageName(name: string): string {
+  return name.toLowerCase().replace(/[-_.]+/g, "-");
+}
+
 function SideBadge({ kind }: { kind: Side }) {
   const tones =
     kind === "conda"
@@ -186,6 +227,10 @@ interface PackageCardProps {
   loading?: boolean;
   normalized?: { from: string; to: string } | null;
   emptyHint?: string;
+  note?: string;
+  collapseSecondary?: boolean;
+  secondaryLabel?: string;
+  secondaryHint?: string;
   hrefFor: (name: string) => string;
 }
 
@@ -195,13 +240,28 @@ function PackageCard({
   loading,
   normalized,
   emptyHint,
+  note,
+  collapseSecondary,
+  secondaryLabel = "other related packages",
+  secondaryHint,
   hrefFor,
 }: PackageCardProps) {
+  const [secondaryOpen, setSecondaryOpen] = useState(false);
   const title = kind === "conda" ? "Conda packages" : "PyPI packages";
   const head =
     kind === "conda"
       ? "border-b-conda-border bg-conda-bg-soft text-conda-ink"
       : "border-b-pypi-border bg-pypi-bg-soft text-pypi-ink";
+
+  const primaryItems = collapseSecondary ? items.filter((item) => item.primary) : items;
+  const secondaryItems = collapseSecondary
+    ? items.filter((item) => !item.primary)
+    : [];
+  const visibleItems = collapseSecondary
+    ? secondaryOpen
+      ? [...primaryItems, ...secondaryItems]
+      : primaryItems
+    : items;
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-rail bg-white shadow-card">
@@ -216,6 +276,11 @@ function PackageCard({
           {items.length} {items.length === 1 ? "name" : "names"}
         </span>
       </div>
+      {note && (
+        <div className="border-b border-rail bg-cream-50 px-4 py-2 text-[12.5px] leading-relaxed text-cream-600">
+          {note}
+        </div>
+      )}
       <div className="px-2 py-1.5">
         {loading && (
           <div className="px-2.5 py-2 text-[13px] text-cream-600">Loading…</div>
@@ -225,33 +290,37 @@ function PackageCard({
             {emptyHint ?? "—"}
           </div>
         )}
-        {items.map((item, i) => (
-          <a
+        {visibleItems.map((item, i) => (
+          <PackageRow
             key={item.name}
+            item={item}
+            index={i}
             href={hrefFor(item.name)}
-            target="_blank"
-            rel="noreferrer"
-            className={
-              "group flex items-center gap-2.5 rounded-md px-2.5 py-2 font-mono text-[13.5px] tracking-[-0.01em] no-underline hover:bg-cream-50 " +
-              (item.primary ? "text-ink font-medium" : "text-ink") +
-              (i > 0 ? " border-t border-dashed border-rail" : "")
-            }
-          >
-            <span className="w-3.5 text-right font-mono text-[11px] text-cream-400">
-              {i + 1}
-            </span>
-            <span>{item.name}</span>
-            <ExternalLink
-              size={12}
-              className="text-cream-300 opacity-0 transition-opacity group-hover:opacity-100"
-            />
-            {item.context && (
-              <span className="ml-auto font-mono text-[11.5px] text-cream-400">
-                {item.context}
-              </span>
-            )}
-          </a>
+          />
         ))}
+        {collapseSecondary && secondaryItems.length > 0 && (
+          <div className="border-t border-dashed border-rail px-2.5 py-2">
+            <button
+              type="button"
+              onClick={() => setSecondaryOpen((open) => !open)}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md text-[12.5px] font-medium text-cream-600 hover:text-ink"
+              aria-expanded={secondaryOpen}
+            >
+              <ChevronDown
+                size={14}
+                className={
+                  "transition-transform " + (secondaryOpen ? "rotate-180" : "")
+                }
+              />
+              {secondaryOpen ? "Hide" : "Show"} {secondaryItems.length} {secondaryLabel}
+            </button>
+            {secondaryHint && (
+              <p className="mt-1.5 max-w-[48ch] text-[11.5px] leading-relaxed text-cream-500">
+                {secondaryHint}
+              </p>
+            )}
+          </div>
+        )}
         {normalized && (
           <div className="px-2.5 pb-1 pt-2.5">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-rail bg-cream-100 px-2 py-0.5 text-[11.5px] text-cream-600">
@@ -269,5 +338,42 @@ function PackageCard({
         )}
       </div>
     </div>
+  );
+}
+
+function PackageRow({
+  item,
+  index,
+  href,
+}: {
+  item: ListItem;
+  index: number;
+  href: string;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className={
+        "group flex items-center gap-2.5 rounded-md px-2.5 py-2 font-mono text-[13.5px] tracking-[-0.01em] no-underline hover:bg-cream-50 " +
+        (item.primary ? "text-ink font-medium" : "text-ink") +
+        (index > 0 ? " border-t border-dashed border-rail" : "")
+      }
+    >
+      <span className="w-3.5 text-right font-mono text-[11px] text-cream-400">
+        {index + 1}
+      </span>
+      <span>{item.name}</span>
+      <ExternalLink
+        size={12}
+        className="text-cream-300 opacity-0 transition-opacity group-hover:opacity-100"
+      />
+      {item.context && (
+        <span className="ml-auto rounded-full border border-rail bg-cream-50 px-1.5 py-0.5 font-sans text-[10.5px] font-semibold uppercase tracking-[0.05em] text-cream-600">
+          {item.context}
+        </span>
+      )}
+    </a>
   );
 }
