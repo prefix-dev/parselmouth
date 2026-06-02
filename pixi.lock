@@ -103,7 +103,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/urllib3-2.5.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.45.1-pyhd8ed1ab_1.conda
       - pypi: .
-      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror.git?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
       - pypi: https://files.pythonhosted.org/packages/0f/73/bb1bc2529f852e7bf64a2dec885e89ff9f5cc7bbf6c9340eed30ff2c69c5/ruamel.yaml-0.18.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/10/a9/121aa64e09dd869422a65158a9df596d0750460baac11085bca3d1444795/oras-0.1.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl
@@ -203,7 +203,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstandard-0.25.0-py312h37e1c23_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-h6491c7d_2.conda
       - pypi: .
-      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror.git?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
       - pypi: https://files.pythonhosted.org/packages/0f/73/bb1bc2529f852e7bf64a2dec885e89ff9f5cc7bbf6c9340eed30ff2c69c5/ruamel.yaml-0.18.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/10/a9/121aa64e09dd869422a65158a9df596d0750460baac11085bca3d1444795/oras-0.1.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl
@@ -303,7 +303,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstandard-0.25.0-py312he5662c2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
       - pypi: .
-      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror.git?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
       - pypi: https://files.pythonhosted.org/packages/0f/73/bb1bc2529f852e7bf64a2dec885e89ff9f5cc7bbf6c9340eed30ff2c69c5/ruamel.yaml-0.18.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/10/a9/121aa64e09dd869422a65158a9df596d0750460baac11085bca3d1444795/oras-0.1.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl
@@ -439,7 +439,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/virtualenv-20.35.4-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.45.1-pyhd8ed1ab_1.conda
       - pypi: .
-      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror.git?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
       - pypi: https://files.pythonhosted.org/packages/10/a9/121aa64e09dd869422a65158a9df596d0750460baac11085bca3d1444795/oras-0.1.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1a/39/47f9197bdd44df24d67ac8893641e16f386c984a0619ef2ee4c51fbbc019/beautifulsoup4-4.14.3-py3-none-any.whl
@@ -558,7 +558,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstandard-0.25.0-py312h37e1c23_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-h6491c7d_2.conda
       - pypi: .
-      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror.git?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
       - pypi: https://files.pythonhosted.org/packages/10/a9/121aa64e09dd869422a65158a9df596d0750460baac11085bca3d1444795/oras-0.1.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1a/39/47f9197bdd44df24d67ac8893641e16f386c984a0619ef2ee4c51fbbc019/beautifulsoup4-4.14.3-py3-none-any.whl
@@ -677,7 +677,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstandard-0.25.0-py312he5662c2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
       - pypi: .
-      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror.git?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
       - pypi: https://files.pythonhosted.org/packages/10/a9/121aa64e09dd869422a65158a9df596d0750460baac11085bca3d1444795/oras-0.1.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1a/39/47f9197bdd44df24d67ac8893641e16f386c984a0619ef2ee4c51fbbc019/beautifulsoup4-4.14.3-py3-none-any.whl
@@ -833,7 +833,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/urllib3-2.5.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.45.1-pyhd8ed1ab_1.conda
       - pypi: .
-      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror.git?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
       - pypi: https://files.pythonhosted.org/packages/10/a9/121aa64e09dd869422a65158a9df596d0750460baac11085bca3d1444795/oras-0.1.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1a/39/47f9197bdd44df24d67ac8893641e16f386c984a0619ef2ee4c51fbbc019/beautifulsoup4-4.14.3-py3-none-any.whl
@@ -947,7 +947,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstandard-0.25.0-py312h37e1c23_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-h6491c7d_2.conda
       - pypi: .
-      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror.git?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
       - pypi: https://files.pythonhosted.org/packages/10/a9/121aa64e09dd869422a65158a9df596d0750460baac11085bca3d1444795/oras-0.1.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1a/39/47f9197bdd44df24d67ac8893641e16f386c984a0619ef2ee4c51fbbc019/beautifulsoup4-4.14.3-py3-none-any.whl
@@ -1061,7 +1061,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstandard-0.25.0-py312he5662c2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
       - pypi: .
-      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror.git?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
       - pypi: https://files.pythonhosted.org/packages/10/a9/121aa64e09dd869422a65158a9df596d0750460baac11085bca3d1444795/oras-0.1.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1a/39/47f9197bdd44df24d67ac8893641e16f386c984a0619ef2ee4c51fbbc019/beautifulsoup4-4.14.3-py3-none-any.whl
@@ -1188,7 +1188,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/urllib3-2.5.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.45.1-pyhd8ed1ab_1.conda
       - pypi: .
-      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror.git?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
       - pypi: https://files.pythonhosted.org/packages/0f/73/bb1bc2529f852e7bf64a2dec885e89ff9f5cc7bbf6c9340eed30ff2c69c5/ruamel.yaml-0.18.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/10/a9/121aa64e09dd869422a65158a9df596d0750460baac11085bca3d1444795/oras-0.1.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl
@@ -1295,7 +1295,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstandard-0.25.0-py312h37e1c23_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-h6491c7d_2.conda
       - pypi: .
-      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror.git?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
       - pypi: https://files.pythonhosted.org/packages/0f/73/bb1bc2529f852e7bf64a2dec885e89ff9f5cc7bbf6c9340eed30ff2c69c5/ruamel.yaml-0.18.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/10/a9/121aa64e09dd869422a65158a9df596d0750460baac11085bca3d1444795/oras-0.1.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl
@@ -1402,7 +1402,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstandard-0.25.0-py312he5662c2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
       - pypi: .
-      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+      - pypi: git+https://github.com/channel-mirrors/conda-oci-mirror.git?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
       - pypi: https://files.pythonhosted.org/packages/0f/73/bb1bc2529f852e7bf64a2dec885e89ff9f5cc7bbf6c9340eed30ff2c69c5/ruamel.yaml-0.18.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/10/a9/121aa64e09dd869422a65158a9df596d0750460baac11085bca3d1444795/oras-0.1.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl
@@ -4361,9 +4361,9 @@ packages:
   name: parselmouth
   requires_dist:
   - conda-forge-metadata>=0.12.0
-  - conda-oci-mirror @ git+https://github.com/channel-mirrors/conda-oci-mirror@25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+  - conda-oci-mirror @ git+https://github.com/channel-mirrors/conda-oci-mirror.git@25ea3e436f0b0bc5a9c646121efafc9c68e116cd
   requires_python: ==3.12
-- pypi: git+https://github.com/channel-mirrors/conda-oci-mirror?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
+- pypi: git+https://github.com/channel-mirrors/conda-oci-mirror.git?rev=25ea3e436f0b0bc5a9c646121efafc9c68e116cd#25ea3e436f0b0bc5a9c646121efafc9c68e116cd
   name: conda-oci-mirror
   version: 0.1.0
   requires_dist:
