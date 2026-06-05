@@ -125,24 +125,34 @@ Example of mapping `requests` to the corresponding conda versions is, this shows
 
 ## Online availability
 
-There are currently two mappings that are online, one of which is work in progress (#2) and are available behind the following URL:
-`https://conda-mapping.prefix.dev/`:
+The public mapping data is served as static objects from:
 
-1. The **Conda - PyPI** name mapping that maps a conda package version and name to it's known PyPI counterpart.
+`https://conda-mapping.prefix.dev/`
 
-   This is available at `https://conda-mapping.prefix.dev/conda-forge/hash-v0/{sha256}` where the
-   `{sha256}` is the sha256 of the conda package, taken from a package record from the channels `repodata.json` file.
+There is no directory listing or query API; clients fetch the object path they need. Supported channel names are `conda-forge`, `bioconda`, `pytorch`, and `tango-controls` unless noted otherwise.
 
-   So, for example, to find the PyPI name of `numpy-1.26.4-py310h4bfa8fc_0.conda` you can use the following URI:
-   `https://conda-mapping.prefix.dev/hash-v0/914476e2d3273fdf9c0419a7bdcb7b31a5ec25949e4afbc847297ff3a50c62c8`
+### Exposed endpoints
 
-2. **(WIP)** The **PyPI - Conda** name mapping that maps a PyPI package to it's known Conda counterpart. This only works for packages that are available on the conda channels that it references. This is available at `https://conda-mapping.prefix.dev/pypi-to-conda-v1/{channel}/{pypi-normalized-name}.json` where the channel is the name of the channel and the `{pypi-normalized-name}` is the normalized name of the package on PyPI.
-   E.g for `requests` we can use `https://conda-mapping.prefix.dev/pypi-to-conda-v1/conda-forge/requests.json`, which will give you the corresponding json.
+| Purpose | Endpoint | Notes |
+| --- | --- | --- |
+| Conda package hash → PyPI mapping | `https://conda-mapping.prefix.dev/hash-v0/{sha256}` | `{sha256}` is the SHA-256 from a conda package record in a channel `repodata.json`. Hash objects are shared across channels. |
+| Channel hash index | `https://conda-mapping.prefix.dev/hash-v0/{channel}/index.json` | Large JSON object containing the package hashes known for a channel and their mapping entries. |
+| PyPI package → conda mapping | `https://conda-mapping.prefix.dev/pypi-to-conda-v1/{channel}/{pypi-normalized-name}.json` | Per-PyPI-package lookup derived from the relations table. Currently produced for channels with `relations-v1` data. |
+| Relations table | `https://conda-mapping.prefix.dev/relations-v1/{channel}/relations.jsonl.gz` | Gzipped JSON Lines source-of-truth table for package relations. Currently exposed for `conda-forge`, `bioconda`, and `pytorch`. |
+| Relations metadata | `https://conda-mapping.prefix.dev/relations-v1/{channel}/metadata.json` | Generation time and counts for the relations table. Currently exposed for `conda-forge`, `bioconda`, and `pytorch`. |
+| Legacy compressed mapping, top-level | `https://conda-mapping.prefix.dev/compressed-v0/compressed_mapping.json` | Flat compressed mapping for `conda-forge`, consumed by `pixi` and other tooling. |
+| Legacy compressed mapping, per-channel | `https://conda-mapping.prefix.dev/compressed-v0/{channel}/compressed_mapping.json` | Flat compressed mapping for a specific channel. |
 
-3. The **legacy compressed mapping** (a flat `{conda_name: pypi_name}` dict, consumed today by `pixi` and other tooling). The same content is also committed to `files/compressed_mapping.json` in this repo, but the R2 URL is the recommended trusted source for clients that cannot reach `raw.githubusercontent.com`.
+Examples:
 
-   - Top-level (conda-forge): `https://conda-mapping.prefix.dev/compressed-v0/compressed_mapping.json`
-   - Per channel: `https://conda-mapping.prefix.dev/compressed-v0/{channel}/compressed_mapping.json` (e.g. `conda-forge`, `bioconda`, `pytorch`, `tango-controls`)
+- Conda hash lookup for `numpy-1.26.4-py310h4bfa8fc_0.conda`:
+  `https://conda-mapping.prefix.dev/hash-v0/914476e2d3273fdf9c0419a7bdcb7b31a5ec25949e4afbc847297ff3a50c62c8`
+- `conda-forge` channel index:
+  `https://conda-mapping.prefix.dev/hash-v0/conda-forge/index.json`
+- PyPI `requests` lookup on `conda-forge`:
+  `https://conda-mapping.prefix.dev/pypi-to-conda-v1/conda-forge/requests.json`
+- Legacy compressed `bioconda` mapping:
+  `https://conda-mapping.prefix.dev/compressed-v0/bioconda/compressed_mapping.json`
 
 ## Infrastructure and Storage Architecture
 
@@ -311,11 +321,12 @@ A small React frontend lives under `frontend/` and is deployed via GitHub Pages 
 mapping from a single search box and shares deep links like
 `/parselmouth/?q=numpy&dir=conda`.
 
-Data flows directly from `https://conda-mapping.prefix.dev` — the hourly parselmouth
-pipeline writes small per-channel `frontend-v1/{channel}/names.json` and
-`pairs.json` artifacts alongside the existing v0/v1 outputs, and the frontend
-fetches them live. **The site does not need to be redeployed when the mapping
-updates** — only when frontend code changes.
+Data flows from the live mapping artifacts: the frontend fetches the compressed
+conda → PyPI mapping from the repository's `files/v0/{channel}/compressed_mapping.json`
+files and fetches PyPI → conda detail from
+`https://conda-mapping.prefix.dev/pypi-to-conda-v1/{channel}/{name}.json`.
+**The site does not need to be redeployed when the mapping updates** — only when
+frontend code changes.
 
 Local development:
 
