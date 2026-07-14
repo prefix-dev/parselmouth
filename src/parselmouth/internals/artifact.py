@@ -19,9 +19,9 @@ egg_pattern_compiled = re.compile(egg_info_pattern)
 # locations of a conda environment:
 #   - "site-packages/"                        (noarch packages)
 #   - "lib/pythonX.Y/site-packages/"          (Linux / macOS)
-#   - "Lib/site-packages/"                    (Windows)
+#   - "Lib/site-packages/" or "lib/site-packages/" (Windows)
 site_packages_prefix_pattern = re.compile(
-    r"^(?:site-packages|lib/python\d+(?:\.\d+)?/site-packages|Lib/site-packages)/"
+    r"^(?:site-packages|lib/python\d+(?:\.\d+)?/site-packages|[Ll]ib/site-packages)/"
 )
 
 
