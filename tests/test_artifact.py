@@ -16,6 +16,11 @@ def test_windows_dist_info():
     assert get_pypi_names_and_version(files) == {"foo": "1.0.0"}
 
 
+def test_windows_lowercase_lib_dist_info():
+    files = ["lib/site-packages/idyntree-15.1.0.dist-info/METADATA"]
+    assert get_pypi_names_and_version(files) == {"idyntree": "15.1.0"}
+
+
 def test_egg_info_in_site_packages():
     files = ["lib/python3.10/site-packages/foo-1.2.3.egg-info/PKG-INFO"]
     assert get_pypi_names_and_version(files) == {"foo": "1.2.3"}
