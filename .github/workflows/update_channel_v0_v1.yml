@@ -51,7 +51,7 @@ jobs:
       string_list: ${{ steps.generate.outputs.string_list }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: prefix-dev/setup-pixi@v0.9.3
+      - uses: prefix-dev/setup-pixi@v0.10.1
 
       - name: Generate combination of missing subdirs and letters
         id: generate
@@ -87,7 +87,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: prefix-dev/setup-pixi@v0.9.3
+      - uses: prefix-dev/setup-pixi@v0.10.1
 
       - name: Get partial index artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -116,7 +116,7 @@ jobs:
     if: needs.updater_of_records.result == 'success'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: prefix-dev/setup-pixi@v0.9.3
+      - uses: prefix-dev/setup-pixi@v0.10.1
 
       - name: Get partial index artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -142,7 +142,7 @@ jobs:
       (inputs.force_v1_generation == true || needs.updater_of_index.result == 'success')
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: prefix-dev/setup-pixi@v0.9.3
+      - uses: prefix-dev/setup-pixi@v0.10.1
 
       - name: Generate and upload v1 mappings (relations table + PyPI lookups)
         run: |
@@ -169,7 +169,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: prefix-dev/setup-pixi@v0.9.3
+      - uses: prefix-dev/setup-pixi@v0.10.1
 
       - name: Update legacy mapping (if needed)
         if: ${{ inputs.use_legacy_mapping }}
