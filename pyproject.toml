@@ -74,7 +74,7 @@ clean-all = { cmd = "docker-compose down -v", depends-on = [
 
 [tool.pixi.feature.fmt.dependencies]
 # Formatting python
-ruff = ">=0.5.0,<0.6"
+ruff = ">=0.16.7,<0.17"
 pre-commit = ">=3.7.1,<4"
 pre-commit-hooks = ">=4.6.0,<5"
 typos = ">=1.23.1,<2"
