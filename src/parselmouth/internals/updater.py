@@ -104,6 +104,9 @@ def main(
 
     # Support processing all packages (when letter is "all")
     process_all = letter.lower() == "all"
+    # `updater-producer` may group several letters into one job to stay under
+    # the GitHub Actions matrix limit, e.g. `linux-64@p,q,r`.
+    prefixes = tuple(prefix for prefix in letter.split(",") if prefix)
 
     all_packages: list[tuple[str, str]] = []
 
@@ -115,7 +118,7 @@ def main(
 
     for _idx, (label, packages) in enumerate(repodatas_with_label.items()):
         for package_name in packages:
-            if not process_all and not package_name.startswith(letter):
+            if not process_all and not package_name.startswith(prefixes):
                 continue
 
             package = packages[package_name]

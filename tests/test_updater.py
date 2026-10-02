@@ -44,3 +44,35 @@ def test_updater(mocked_upload_to_s3, capsys, tmp_path):
 
     captured = capsys.readouterr()
     assert not captured.err
+
+
+@patch("parselmouth.internals.updater.upload_to_s3")
+def test_updater_with_grouped_letters(mocked_upload_to_s3, capsys, tmp_path):
+    test_s3_client = MockS3()
+
+    updater.get_all_packages_by_subdir = mocked_get_all_packages_by_subdir
+    updater.names_mapping.root.clear()
+
+    tmp_output_dir = tmp_path / "tmp_output_dir"
+    tmp_partial_dir = tmp_path / "tmp_partial_dir"
+
+    os.makedirs(tmp_output_dir / "conda-forge")
+    index_json: Path = tmp_output_dir / "conda-forge" / "index.json"
+    index_json.write_text(json.dumps(test_s3_client._uploaded_index.model_dump()))
+
+    updater.main(
+        "linux-64@p,q",
+        output_dir=tmp_output_dir,
+        partial_output_dir=tmp_partial_dir,
+        channel=SupportedChannels.CONDA_FORGE,
+        upload=True,
+    )
+
+    pymongoarrow_hash = (
+        "b8a2bac7385a33d13f51d7a92cd4dc47307ab0ac89218aae129c844d20324f76"
+    )
+    uploaded = mocked_upload_to_s3.call_args[0][0].root
+    assert pymongoarrow_hash in uploaded
+    assert all(entry.package_name[0] in ("p", "q") for entry in uploaded.values())
+
+    assert (tmp_partial_dir / "conda-forge" / "linux-64@p,q.json").exists()

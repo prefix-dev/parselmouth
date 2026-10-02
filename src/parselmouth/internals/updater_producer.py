@@ -19,6 +19,42 @@ egg_info_pattern = r"([^/]+?)-(\d+[^/]*)\.egg-info\/PKG-INFO"
 dist_pattern_compiled = re.compile(dist_info_pattern)
 egg_pattern_compiled = re.compile(egg_info_pattern)
 
+# GitHub Actions refuses a matrix with more than 256 configurations.
+# Keep some headroom below that hard limit.
+MAX_MATRIX_JOBS = 250
+
+
+def build_matrix(
+    letters_by_subdir: dict[str, set[str]], max_jobs: int = MAX_MATRIX_JOBS
+) -> list[str]:
+    """
+    Turn the per-subdir set of first letters into the list of `subdir@letters`
+    entries consumed by the `updater` command.
+
+    Each entry is normally a single letter (`linux-64@p`). When the total number
+    of entries would exceed `max_jobs`, letters of the same subdir are grouped
+    into comma-separated chunks (`linux-64@p,q,r`) until the matrix fits.
+    """
+    sorted_letters = {
+        subdir: sorted(letters)
+        for subdir, letters in sorted(letters_by_subdir.items())
+        if letters
+    }
+    total = sum(len(letters) for letters in sorted_letters.values())
+    if total == 0:
+        return []
+
+    group_size = 1
+    while True:
+        matrix = [
+            f"{subdir}@{','.join(letters[i : i + group_size])}"
+            for subdir, letters in sorted_letters.items()
+            for i in range(0, len(letters), group_size)
+        ]
+        if len(matrix) <= max_jobs:
+            return matrix
+        group_size += 1
+
 
 def main(
     output_dir: str,
@@ -52,9 +88,10 @@ def main(
     else:
         existing_mapping_data = IndexMapping(root={})
 
-    letters = set()
+    letters_by_subdir: dict[str, set[str]] = {}
 
     for subdir in subdirs:
+        letters = letters_by_subdir.setdefault(subdir, set())
         # repodatas = {}
         packages_with_label = get_all_packages_by_subdir(subdir, channel)
 
@@ -70,7 +107,7 @@ def main(
 
                 if sha256 not in existing_mapping_data.root:
                     all_packages.append(package_name)
-                    letters.add(f"{subdir}@{package_name[0]}")
+                    letters.add(package_name[0])
 
                 elif check_if_pypi_exists:
                     # If the package already exists, we check if it has pypi_normalized_names
@@ -78,7 +115,7 @@ def main(
                     # If it does not have pypi_normalized_names, we add it to the list
                     if existing_entry.pypi_normalized_names is None:
                         all_packages.append(package_name)
-                        letters.add(f"{subdir}@{package_name[0]}")
+                        letters.add(package_name[0])
 
     # Write the index file to disk
     index_location = Path(output_dir) / channel / "index.json"
@@ -87,5 +124,5 @@ def main(
         json.dump(existing_mapping_data.model_dump(), mapping_file)
 
     # Print the processed packages
-    json_letters = json.dumps(list(letters))
+    json_letters = json.dumps(build_matrix(letters_by_subdir))
     print(json_letters)
