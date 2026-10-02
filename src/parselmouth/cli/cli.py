@@ -55,7 +55,7 @@ def updater(
     subdir_letter: Annotated[
         str,
         typer.Argument(
-            help="Pass subdir@letter to get the new packages. Example: passing `noarch@s` will get all the packages from noarch subdir which start with `s` letter."
+            help="Pass subdir@letter to get the new packages. Example: passing `noarch@s` will get all the packages from noarch subdir which start with `s` letter. Several letters can be grouped with commas (`noarch@s,t,u`), and `noarch@all` processes the whole subdir."
         ),
     ],
     output_dir: str = "output_index",

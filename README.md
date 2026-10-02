@@ -209,6 +209,7 @@ The GitHub Actions workflows are organized into stages:
 1. **Producer Stage** (`generate_hash_letters`):
    - Identifies missing packages by comparing upstream channel repodata with existing index
    - Outputs a matrix of `subdir@letter` combinations to process in parallel
+   - Groups letters of a subdir (e.g. `linux-64@p,q,r`) when the matrix would exceed GitHub's 256-job limit
 
 2. **Updater Stage** (`updater_of_records`):
    - Runs in parallel for each `subdir@letter` combination
