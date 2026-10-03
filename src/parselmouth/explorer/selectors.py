@@ -42,18 +42,16 @@ class ChannelSelector:
         if channel is not None:
             return channel
 
+        channels = list(SupportedChannels)
+        choices = [str(i + 1) for i in range(len(channels))]
+
         console.print("\n[yellow]Select Channel[/yellow]")
-        console.print("1. conda-forge")
-        console.print("2. pytorch")
-        console.print("3. bioconda")
+        for choice, channel in zip(choices, channels):
+            console.print(f"{choice}. {channel}")
 
-        choice = Prompt.ask("\nSelect channel", choices=["1", "2", "3"], default="1")
-
-        if choice == "1":
-            return SupportedChannels.CONDA_FORGE
-        if choice == "2":
-            return SupportedChannels.PYTORCH
-        return SupportedChannels.BIOCONDA
+        choice = Prompt.ask("\nSelect channel", choices=choices, default="1")
+        idx = int(choice) - 1
+        return channels[idx]
 
 
 @dataclass
