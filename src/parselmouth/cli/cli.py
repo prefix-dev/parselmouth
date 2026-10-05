@@ -164,16 +164,18 @@ def update_v1_mappings(
 def update_status(
     channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
     updated: bool = False,
+    failed: bool = False,
     upload: bool = False,
 ):
     """
     Write the "last generation" status file (status-v1/{channel}/last_generation.json).
 
-    Run at the end of every successful updater run. `last_checked_at` is always
-    refreshed; `last_updated_at` only when --updated is passed (new data was published).
+    Run at the end of every updater run. On success `last_checked_at` is refreshed,
+    and `last_updated_at` too when --updated is passed (new data was published).
+    With --failed only the run result and failure counter change.
     """
 
-    status_main(channel=channel, updated=updated, upload=upload)
+    status_main(channel=channel, updated=updated, upload=upload, failed=failed)
 
 
 @app.command()

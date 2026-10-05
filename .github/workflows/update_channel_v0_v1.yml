@@ -218,28 +218,34 @@ jobs:
           git commit -m "Update ${{ inputs.channel }} mappings (v0 + v1) via GitHub Action" || true
           git push
 
-  # Heartbeat for the status page: written last, once the R2 data (v0 + v1) is up to date
-  # and `update_file` has committed the git copy of the mappings.
+  # Heartbeat for the status page: written last, after every run that wasn't cancelled.
+  # On success `last_checked_at` moves forward; on failure only the run result and
+  # failure counter change, so monitors can alert on either staleness or failures.
+  # A run only counts as successful once `update_file` has committed the git copy too.
   update_status:
     runs-on: ubuntu-latest
-    needs: [generate_hash_letters, updater_of_index, update_v1_mappings, update_file]
-    if: |
-      always() &&
-      needs.generate_hash_letters.result == 'success' &&
-      (needs.updater_of_index.result == 'success' || needs.updater_of_index.result == 'skipped') &&
-      (needs.update_v1_mappings.result == 'success' || needs.update_v1_mappings.result == 'skipped') &&
-      needs.update_file.result == 'success'
+    needs: [generate_hash_letters, updater_of_records, updater_of_index, update_v1_mappings, update_file]
+    if: ${{ !cancelled() }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: prefix-dev/setup-pixi@v0.10.1
 
       - name: Write last-generation status file
         run: |
-          UPDATED=""
-          if [ "${{ needs.updater_of_index.result }}" = "success" ] || [ "${{ needs.update_v1_mappings.result }}" = "success" ]; then
-            UPDATED="--updated"
+          FLAGS=""
+          # `skipped` is fine for the later jobs (nothing new to process), but a
+          # failed matrix job also leaves the index/v1 jobs `skipped`, so check every job.
+          ok() { [ "$1" = "success" ] || [ "$1" = "skipped" ]; }
+          if [ "${{ needs.generate_hash_letters.result }}" != "success" ] \
+            || ! ok "${{ needs.updater_of_records.result }}" \
+            || ! ok "${{ needs.updater_of_index.result }}" \
+            || ! ok "${{ needs.update_v1_mappings.result }}" \
+            || [ "${{ needs.update_file.result }}" != "success" ]; then
+            FLAGS="--failed"
+          elif [ "${{ needs.updater_of_index.result }}" = "success" ] || [ "${{ needs.update_v1_mappings.result }}" = "success" ]; then
+            FLAGS="--updated"
           fi
-          pixi run parselmouth update-status --upload --channel ${{ inputs.channel }} $UPDATED
+          pixi run parselmouth update-status --upload --channel ${{ inputs.channel }} $FLAGS
         env:
           R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
           R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
