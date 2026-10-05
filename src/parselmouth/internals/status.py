@@ -13,7 +13,9 @@ ISO_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 def _to_unix(iso: str | None) -> int | None:
     if iso is None:
         return None
-    return int(datetime.strptime(iso, ISO_FORMAT).replace(tzinfo=timezone.utc).timestamp())
+    return int(
+        datetime.strptime(iso, ISO_FORMAT).replace(tzinfo=timezone.utc).timestamp()
+    )
 
 
 def build_status(
