@@ -16,6 +16,7 @@ jobs:
   update:
     permissions:
       contents: write
+      id-token: write  # Needed by update_file to get an octo-sts token
     uses: ./.github/workflows/update_channel_v0_v1.yml
     with:
       channel: conda-forge
