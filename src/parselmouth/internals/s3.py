@@ -40,6 +40,12 @@ LEGACY_COMPRESSED_FILE = "compressed_mapping.json"
 LEGACY_COMPRESSED_CACHE_CONTROL = "max-age=3600, public"
 LEGACY_COMPRESSED_CONTENT_TYPE = "application/json"
 
+# Small per-channel status file, meant to be polled by a status page.
+STATUS_PREFIX = "status-v1"
+STATUS_FILE = "last_generation.json"
+# Keep it short so the status page sees fresh data.
+STATUS_CACHE_CONTROL = "max-age=60, public"
+
 
 class MappingEntry(BaseModel):
     """
@@ -407,6 +413,38 @@ class S3:
                 "ContentType": LEGACY_COMPRESSED_CONTENT_TYPE,
             },
         )
+
+    def upload_status(
+        self,
+        status: dict[str, Any],
+        channel: SupportedChannels,
+    ) -> None:
+        """
+        Upload the "last generation" status file for a channel.
+
+        Key: status-v1/{channel}/last_generation.json
+        """
+        key = f"{STATUS_PREFIX}/{channel}/{STATUS_FILE}"
+        self._s3_client.upload_fileobj(
+            io.BytesIO(json.dumps(status, indent=2).encode("utf-8")),
+            self.bucket_name,
+            key,
+            ExtraArgs={
+                "CacheControl": STATUS_CACHE_CONTROL,
+                "ContentType": "application/json",
+            },
+        )
+
+    def get_status(self, channel: SupportedChannels) -> Optional[dict[str, Any]]:
+        """
+        Download the "last generation" status file, or None if it doesn't exist yet.
+        """
+        key = f"{STATUS_PREFIX}/{channel}/{STATUS_FILE}"
+        try:
+            response = self._s3_client.get_object(Bucket=self.bucket_name, Key=key)
+        except self._s3_client.exceptions.NoSuchKey:
+            return None
+        return json.loads(response["Body"].read().decode("utf-8"))
 
     def get_relations_table(
         self,

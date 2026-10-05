@@ -10,6 +10,7 @@ from parselmouth.internals.legacy_mapping import main as legacy_mapping_main
 from parselmouth.internals.mapping_transformer import main as mapping_transformer_main
 from parselmouth.internals.relations_updater import main as relations_updater_main
 from parselmouth.internals.remover import main as remover_main
+from parselmouth.internals.status import main as status_main
 from parselmouth.internals.updater import main as updater_main
 from parselmouth.internals.updater_merger import main as update_merger_main
 from parselmouth.internals.updater_producer import main as updater_producer_main
@@ -157,6 +158,22 @@ def update_v1_mappings(
         skip_unchanged=skip_unchanged,
         public_url=public_url,
     )
+
+
+@app.command()
+def update_status(
+    channel: SupportedChannels = SupportedChannels.CONDA_FORGE,
+    updated: bool = False,
+    upload: bool = False,
+):
+    """
+    Write the "last generation" status file (status-v1/{channel}/last_generation.json).
+
+    Run at the end of every successful updater run. `last_checked_at` is always
+    refreshed; `last_updated_at` only when --updated is passed (new data was published).
+    """
+
+    status_main(channel=channel, updated=updated, upload=upload)
 
 
 @app.command()
