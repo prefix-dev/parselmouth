@@ -160,15 +160,26 @@ jobs:
   update_file:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # To push on main branch
+      contents: read
+      id-token: write  # To get a token from octo-sts
     needs: [updater_of_index, update_v1_mappings]  # Wait for BOTH v0 and v1
     if: |
       always() &&
       (needs.updater_of_index.result == 'success' || needs.updater_of_index.result == 'skipped') &&
       (needs.update_v1_mappings.result == 'success' || needs.update_v1_mappings.result == 'skipped')
     steps:
+      # `main` requires pull requests; the octo-sts app is a bypass actor of that ruleset,
+      # the default GITHUB_TOKEN is not. Trust policy: .github/chainguard/push-main.sts.yaml
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
+        id: octo-sts
+        with:
+          scope: ${{ github.repository }}
+          identity: push-main
+
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          token: ${{ steps.octo-sts.outputs.token }}
       - uses: prefix-dev/setup-pixi@v0.10.1
 
       - name: Update legacy mapping (if needed)

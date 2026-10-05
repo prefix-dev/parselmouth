@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/octo-sts/app/refs/heads/main/pkg/octosts/octosts.TrustPolicy.json
+# Trust policy for the `push-main` identity used by the updater workflow to commit
+# the generated mappings to `main` (the octo-sts app is a bypass actor of the `main` ruleset).
+issuer: https://token.actions.githubusercontent.com
+subject: repo:prefix-dev/parselmouth:ref:refs/heads/main
+# Only the reusable updater workflow may use this identity.
+claim_pattern:
+  job_workflow_ref: prefix-dev/parselmouth/\.github/workflows/update_channel_v0_v1\.yml@refs/heads/main
+
+permissions:
+  contents: write
