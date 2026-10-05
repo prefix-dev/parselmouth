@@ -1,4 +1,5 @@
 from collections import defaultdict
+import functools
 import json
 import os
 from pathlib import Path
@@ -12,6 +13,7 @@ import zipfile
 import zstandard as zstd
 from urllib.parse import urljoin
 
+import requests
 import conda_forge_metadata.artifact_info
 from conda_forge_metadata.artifact_info.info_json import (
     get_artifact_info_as_json,
@@ -34,14 +36,25 @@ def load_anaconda_token() -> str:
     return token
 
 
+@functools.lru_cache(maxsize=None)
 def fetch_channel_labels(channel: SupportedChannels) -> list[str]:
-    """Fetch all labels for a given channel from Anaconda API."""
+    """Fetch all labels for a given channel from Anaconda API.
+
+    This deliberately does NOT go through the shared session from
+    `get_global_session()`. Repodata downloads from conda.anaconda.org set a
+    `session` cookie scoped to `Domain=anaconda.org`; the shared session then
+    forwards that anonymous cookie to api.anaconda.org, which prefers it over
+    the `Authorization: token ...` header and answers 401 "Authentication
+    Error". A one-off request carries no cookie jar, so the token is honored.
+
+    The result is cached per channel: labels do not change within a run, and
+    this avoids one API call per subdir.
+    """
     token = load_anaconda_token()
     headers = {"Authorization": f"token {token}"}
 
-    session = get_global_session()
-    response = session.get(
-        f"https://api.anaconda.org/channels/{channel}", headers=headers
+    response = requests.get(
+        f"https://api.anaconda.org/channels/{channel}", headers=headers, timeout=60
     )
     response.raise_for_status()
 
