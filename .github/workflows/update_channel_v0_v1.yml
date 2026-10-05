@@ -218,16 +218,17 @@ jobs:
           git commit -m "Update ${{ inputs.channel }} mappings (v0 + v1) via GitHub Action" || true
           git push
 
-  # Heartbeat for the status page: written once the R2 data (v0 + v1) is up to date.
-  # Deliberately independent of `update_file`, which only commits the git copy.
+  # Heartbeat for the status page: written last, once the R2 data (v0 + v1) is up to date
+  # and `update_file` has committed the git copy of the mappings.
   update_status:
     runs-on: ubuntu-latest
-    needs: [generate_hash_letters, updater_of_index, update_v1_mappings]
+    needs: [generate_hash_letters, updater_of_index, update_v1_mappings, update_file]
     if: |
       always() &&
       needs.generate_hash_letters.result == 'success' &&
       (needs.updater_of_index.result == 'success' || needs.updater_of_index.result == 'skipped') &&
-      (needs.update_v1_mappings.result == 'success' || needs.update_v1_mappings.result == 'skipped')
+      (needs.update_v1_mappings.result == 'success' || needs.update_v1_mappings.result == 'skipped') &&
+      needs.update_file.result == 'success'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: prefix-dev/setup-pixi@v0.10.1
