@@ -15,6 +15,7 @@ class SupportedChannels(StrEnum):
     PYTORCH = "pytorch"
     BIOCONDA = "bioconda"
     TANGO_CONTROLS = "tango-controls"
+    NUMBA = "numba"
 
     @property
     def support_channeldata(self) -> bool:
@@ -22,6 +23,7 @@ class SupportedChannels(StrEnum):
             SupportedChannels.CONDA_FORGE,
             SupportedChannels.PYTORCH,
             SupportedChannels.BIOCONDA,
+            SupportedChannels.NUMBA,
         }
 
 
@@ -33,6 +35,7 @@ class ChannelUrls:
         SupportedChannels.TANGO_CONTROLS: [
             "https://conda.anaconda.org/tango-controls/"
         ],
+        SupportedChannels.NUMBA: ["https://conda.anaconda.org/numba/"],
     }
 
     @staticmethod
