@@ -3,6 +3,7 @@
 from parselmouth.internals.package_relations import (
     levenshtein_distance,
     create_pypi_lookup_files,
+    create_pypi_lookup_files_detailed,
     RelationsTable,
     PackageRelation,
 )
@@ -118,10 +119,11 @@ def _relation(
 
 
 class TestPrefixStrippingAndThreshold:
-    """Tests for conda name-prefix stripping and the Levenshtein threshold.
+    """Guards against wrong mappings like tzdata -> psycopg.
 
-    These guard against wrong mappings like tzdata -> psycopg, where a conda
-    package merely bundles a PyPI package under an unrelated name.
+    A conda package can bundle a PyPI package under an unrelated name, so the
+    lookup has to prefer the conda package that actually provides it and omit
+    matches that are too far away.
     """
 
     def test_tzdata_prefers_python_tzdata_over_psycopg(self):
@@ -184,8 +186,7 @@ class TestPrefixStrippingAndThreshold:
         """Conda packages using "python_" instead of "python-" still match.
 
         Names are normalized before the prefix is stripped, so
-        "python_http_client" and "python-http-client" compare equal to the
-        PyPI name "python-http-client".
+        "python_http_client" equals "python-http-client".
         """
         table = RelationsTable(SupportedChannels.CONDA_FORGE)
         table.relations = [
@@ -249,3 +250,27 @@ class TestPrefixStrippingAndThreshold:
             "sklearn-xarray",
         ):
             assert suppressed not in lookups
+
+    def test_detailed_lookup_applies_the_same_filters(self):
+        """The detailed path applies the same suppression, prefix, and
+        threshold rules as the simplified path."""
+        table = RelationsTable(SupportedChannels.CONDA_FORGE)
+        table.relations = [
+            _relation("python-tzdata", pypi_name="tzdata"),
+            _relation("psycopg", pypi_name="tzdata"),
+            _relation("zaber-motion", pypi_name="zaber-bson"),
+        ]
+
+        detailed = create_pypi_lookup_files_detailed(table)
+
+        # Suppressed names are omitted from the detailed output too.
+        assert "zaber-bson" not in detailed
+
+        # The vendored conda package is dropped; only the in-threshold one
+        # remains, and it is the one the simplified path picks.
+        assert "tzdata" in detailed
+        names = {pkg.name for pkg in detailed["tzdata"].conda_versions["2022.1"]}
+        assert names == {"python-tzdata"}
+
+        simple = create_pypi_lookup_files(table)
+        assert simple["tzdata"].conda_versions["2022.1"] == "python-tzdata"

@@ -75,7 +75,7 @@ MAX_LEVENSHTEIN_DISTANCE = 4
 
 # Conda name prefix stripped before comparing, e.g. "python-tzdata" -> "tzdata".
 # Names are normalized first, so "python_tzdata" and "python-tzdata" are the
-# same string. This matches how PyPI stores canonical package names.
+# same string. This is the same normalization PyPI uses for package names.
 _CONDA_NAME_PREFIX = "python-"
 
 # PyPI names we never map (phantom packages, forks, collisions).
@@ -443,27 +443,55 @@ class PyPIPackageLookup(BaseModel):
         return self.model_dump_json(indent=None).encode("utf-8")
 
 
+def _filtered_conda_packages(
+    pypi_name: str,
+    versions: dict[PyPIVersion, list[CondaPackageVersion]],
+) -> dict[PyPIVersion, list[CondaPackageVersion]]:
+    """Filter conda packages per version by name: suppression, prefix, threshold."""
+    if pypi_name in _SUPPRESSED_PYPI_NAMES:
+        return {}
+
+    stripped_pypi = _strip_conda_prefix(pypi_name)
+    filtered: dict[PyPIVersion, list[CondaPackageVersion]] = {}
+    for pypi_version, conda_packages in versions.items():
+        surviving: list[CondaPackageVersion] = []
+        seen_names: set[CondaPackageName] = set()
+        for pkg in conda_packages:
+            if pkg.name in seen_names:
+                continue
+            if (
+                levenshtein_distance(stripped_pypi, _strip_conda_prefix(pkg.name))
+                <= MAX_LEVENSHTEIN_DISTANCE
+            ):
+                surviving.append(pkg)
+                seen_names.add(pkg.name)
+        if surviving:
+            filtered[pypi_version] = surviving
+
+    return filtered
+
+
 def create_pypi_lookup_files_detailed(
     table: RelationsTable,
 ) -> dict[PyPIName, PyPIPackageLookupDetailed]:
     """
     Create detailed individual lookup files for each PyPI package.
 
-    These include full version and build information for conda packages.
-    These are the files that will be served at:
-    /pypi-to-conda-v1/{channel}/{pypi_name}-detailed.json
-
-    Returns:
-        Dict mapping pypi_name to its detailed lookup object
+    Includes full version and build information for conda packages.
+    Served at: /pypi-to-conda-v1/{channel}/{pypi_name}-detailed.json
     """
     pypi_to_conda = table.generate_pypi_to_conda_lookups()
 
     lookups = {}
     for pypi_name, versions in pypi_to_conda.items():
+        filtered = _filtered_conda_packages(pypi_name, versions)
+        if not filtered:
+            continue
+
         lookup = PyPIPackageLookupDetailed(
             channel=str(table.channel),
             pypi_name=pypi_name,
-            conda_versions=versions,
+            conda_versions=filtered,
         )
         lookups[pypi_name] = lookup
 
@@ -476,42 +504,31 @@ def create_pypi_lookup_files(
     """
     Create simplified individual lookup files for each PyPI package.
 
-    This version only includes the best-matching conda package name (by Levenshtein
+    Includes only the best-matching conda package name (by Levenshtein
     distance to the PyPI name), without version/build details.
-    These are the files that will be served at:
-    /pypi-to-conda-v1/{channel}/{pypi_name}.json
-
-    Returns:
-        Dict mapping pypi_name to its simplified lookup object
+    Served at: /pypi-to-conda-v1/{channel}/{pypi_name}.json
     """
     pypi_to_conda = table.generate_pypi_to_conda_lookups()
 
     lookups = {}
     for pypi_name, versions in pypi_to_conda.items():
-        if pypi_name in _SUPPRESSED_PYPI_NAMES:
+        stripped_pypi = _strip_conda_prefix(pypi_name)
+        filtered = _filtered_conda_packages(pypi_name, versions)
+        if not filtered:
             continue
 
-        stripped_pypi = _strip_conda_prefix(pypi_name)
-        simplified_versions: dict[PyPIVersion, CondaPackageName] = {}
-        for pypi_version, conda_packages in versions.items():
-            conda_names = list(dict.fromkeys([pkg.name for pkg in conda_packages]))
-            # Strip the conda name prefix before comparing distances.
-            best_match = min(
-                conda_names,
+        # Every name in the filtered set is within the threshold, so picking the
+        # closest one here selects the best conda package per version.
+        simplified_versions: dict[PyPIVersion, CondaPackageName] = {
+            pypi_version: min(
+                [pkg.name for pkg in packages],
                 key=lambda name: (
                     levenshtein_distance(stripped_pypi, _strip_conda_prefix(name)),
                     levenshtein_distance(pypi_name, name),
                 ),
             )
-            best_distance = levenshtein_distance(
-                stripped_pypi, _strip_conda_prefix(best_match)
-            )
-            if best_distance > MAX_LEVENSHTEIN_DISTANCE:
-                continue
-            simplified_versions[pypi_version] = best_match
-
-        if not simplified_versions:
-            continue
+            for pypi_version, packages in filtered.items()
+        }
 
         lookup = PyPIPackageLookup(
             channel=str(table.channel),
