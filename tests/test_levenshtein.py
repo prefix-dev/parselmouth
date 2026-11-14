@@ -180,6 +180,35 @@ class TestPrefixStrippingAndThreshold:
         lookups = create_pypi_lookup_files(table)
         assert lookups["foo"].conda_versions["2022.1"] == "foo"
 
+    def test_underscore_prefix_is_stripped_too(self):
+        """Conda packages using "python_" instead of "python-" still match.
+
+        Names are normalized before the prefix is stripped, so
+        "python_http_client" and "python-http-client" compare equal to the
+        PyPI name "python-http-client".
+        """
+        table = RelationsTable(SupportedChannels.CONDA_FORGE)
+        table.relations = [
+            _relation("python_http_client", pypi_name="python-http-client"),
+            _relation("python_cmethods", pypi_name="python-cmethods"),
+            _relation(
+                "python_jsonschema_objects", pypi_name="python-jsonschema-objects"
+            ),
+            _relation("python_version", pypi_name="python-version"),
+        ]
+
+        lookups = create_pypi_lookup_files(table)
+        assert (
+            lookups["python-http-client"].conda_versions["2022.1"]
+            == "python_http_client"
+        )
+        assert lookups["python-cmethods"].conda_versions["2022.1"] == "python_cmethods"
+        assert (
+            lookups["python-jsonschema-objects"].conda_versions["2022.1"]
+            == "python_jsonschema_objects"
+        )
+        assert lookups["python-version"].conda_versions["2022.1"] == "python_version"
+
     def test_matplotlib_only_finesse_is_omitted(self):
         """finesse is too far from matplotlib, so no mapping is served."""
         table = RelationsTable(SupportedChannels.CONDA_FORGE)

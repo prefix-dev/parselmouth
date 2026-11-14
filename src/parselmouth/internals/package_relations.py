@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from parselmouth.internals.channels import SupportedChannels
 from parselmouth.internals.s3 import IndexMapping, MappingEntry
+from parselmouth.internals.utils import normalize
 from parselmouth.internals.types import (
     CondaFileName,
     CondaPackageName,
@@ -68,14 +69,16 @@ def levenshtein_distance(s1: str, s2: str) -> int:
     return previous_row[-1]
 
 
-# Max Levenshtein distance after stripping conda name prefixes.
-# Omit matches beyond this instead of serving a wrong mapping.
+# Max Levenshtein distance after stripping the conda "python-" prefix.
+# Matches beyond this are omitted rather than served as wrong mappings.
 MAX_LEVENSHTEIN_DISTANCE = 4
 
-# Conda name prefixes stripped before comparing, e.g. "python-" -> "tzdata".
-_CONDA_NAME_PREFIXES = ("python-",)
+# Conda name prefix stripped before comparing, e.g. "python-tzdata" -> "tzdata".
+# Names are normalized first, so "python_tzdata" and "python-tzdata" are the
+# same string. This matches how PyPI stores canonical package names.
+_CONDA_NAME_PREFIX = "python-"
 
-# PyPI names we never map.
+# PyPI names we never map (phantom packages, forks, collisions).
 _SUPPRESSED_PYPI_NAMES = frozenset(
     {
         "alpenglow-sip",
@@ -87,12 +90,9 @@ _SUPPRESSED_PYPI_NAMES = frozenset(
 )
 
 
-def _strip_conda_prefixes(name: str) -> str:
-    """Remove a leading conda package name prefix such as python-."""
-    for prefix in _CONDA_NAME_PREFIXES:
-        if name.startswith(prefix):
-            return name[len(prefix) :]
-    return name
+def _strip_conda_prefix(name: str) -> str:
+    """Strip a leading "python-" prefix from a normalized package name."""
+    return normalize(name).removeprefix(_CONDA_NAME_PREFIX)
 
 
 def parse_conda_filename(filename: CondaFileName) -> tuple[CondaVersion, str]:
@@ -491,20 +491,20 @@ def create_pypi_lookup_files(
         if pypi_name in _SUPPRESSED_PYPI_NAMES:
             continue
 
-        stripped_pypi = _strip_conda_prefixes(pypi_name)
+        stripped_pypi = _strip_conda_prefix(pypi_name)
         simplified_versions: dict[PyPIVersion, CondaPackageName] = {}
         for pypi_version, conda_packages in versions.items():
             conda_names = list(dict.fromkeys([pkg.name for pkg in conda_packages]))
-            # Strip conda name prefixes before comparing distances.
+            # Strip the conda name prefix before comparing distances.
             best_match = min(
                 conda_names,
                 key=lambda name: (
-                    levenshtein_distance(stripped_pypi, _strip_conda_prefixes(name)),
+                    levenshtein_distance(stripped_pypi, _strip_conda_prefix(name)),
                     levenshtein_distance(pypi_name, name),
                 ),
             )
             best_distance = levenshtein_distance(
-                stripped_pypi, _strip_conda_prefixes(best_match)
+                stripped_pypi, _strip_conda_prefix(best_match)
             )
             if best_distance > MAX_LEVENSHTEIN_DISTANCE:
                 continue
