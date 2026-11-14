@@ -196,3 +196,27 @@ class TestPrefixStrippingAndThreshold:
 
         lookups = create_pypi_lookup_files(table)
         assert "matplotlib" not in lookups
+
+    def test_phantom_pypi_names_are_omitted(self):
+        """PyPI names that don't exist on PyPI are never served as mappings."""
+        table = RelationsTable(SupportedChannels.CONDA_FORGE)
+        table.relations = [
+            _relation("zaber-motion", pypi_name="zaber-bson"),
+            _relation("alpenglow", pypi_name="alpenglow-sip"),
+            _relation("ambertools", pypi_name="amberutils"),
+            _relation(
+                "felyxcontrib-metrics-workflow",
+                pypi_name="felyxcontribs-metrics-workflow",
+            ),
+            _relation("gw-sklearn-xarray", pypi_name="sklearn-xarray"),
+        ]
+
+        lookups = create_pypi_lookup_files(table)
+        for suppressed in (
+            "zaber-bson",
+            "alpenglow-sip",
+            "amberutils",
+            "felyxcontribs-metrics-workflow",
+            "sklearn-xarray",
+        ):
+            assert suppressed not in lookups

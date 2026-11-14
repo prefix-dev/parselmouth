@@ -68,12 +68,23 @@ def levenshtein_distance(s1: str, s2: str) -> int:
     return previous_row[-1]
 
 
-# Maximum Levenshtein distance after stripping common conda name prefixes.
-# Matches beyond this are too unreliable and are omitted rather than wrong.
+# Max Levenshtein distance after stripping conda name prefixes.
+# Omit matches beyond this instead of serving a wrong mapping.
 MAX_LEVENSHTEIN_DISTANCE = 4
 
 # Conda name prefixes stripped before comparing, e.g. "python-" -> "tzdata".
 _CONDA_NAME_PREFIXES = ("python-",)
+
+# PyPI names we never map.
+_SUPPRESSED_PYPI_NAMES = frozenset(
+    {
+        "alpenglow-sip",
+        "amberutils",
+        "felyxcontribs-metrics-workflow",
+        "sklearn-xarray",
+        "zaber-bson",
+    }
+)
 
 
 def _strip_conda_prefixes(name: str) -> str:
@@ -477,6 +488,9 @@ def create_pypi_lookup_files(
 
     lookups = {}
     for pypi_name, versions in pypi_to_conda.items():
+        if pypi_name in _SUPPRESSED_PYPI_NAMES:
+            continue
+
         stripped_pypi = _strip_conda_prefixes(pypi_name)
         simplified_versions: dict[PyPIVersion, CondaPackageName] = {}
         for pypi_version, conda_packages in versions.items():
