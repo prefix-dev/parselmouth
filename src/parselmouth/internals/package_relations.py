@@ -68,6 +68,22 @@ def levenshtein_distance(s1: str, s2: str) -> int:
     return previous_row[-1]
 
 
+# Maximum Levenshtein distance after stripping common conda name prefixes.
+# Matches beyond this are too unreliable and are omitted rather than wrong.
+MAX_LEVENSHTEIN_DISTANCE = 4
+
+# Conda name prefixes stripped before comparing, e.g. "python-" -> "tzdata".
+_CONDA_NAME_PREFIXES = ("python-",)
+
+
+def _strip_conda_prefixes(name: str) -> str:
+    """Remove a leading conda package name prefix such as python-."""
+    for prefix in _CONDA_NAME_PREFIXES:
+        if name.startswith(prefix):
+            return name[len(prefix) :]
+    return name
+
+
 def parse_conda_filename(filename: CondaFileName) -> tuple[CondaVersion, str]:
     """
     Parse conda filename to extract version and build string.
@@ -461,16 +477,27 @@ def create_pypi_lookup_files(
 
     lookups = {}
     for pypi_name, versions in pypi_to_conda.items():
-        # For each version, pick the conda package with smallest Levenshtein distance
+        stripped_pypi = _strip_conda_prefixes(pypi_name)
         simplified_versions: dict[PyPIVersion, CondaPackageName] = {}
         for pypi_version, conda_packages in versions.items():
-            # Get unique conda package names
             conda_names = list(dict.fromkeys([pkg.name for pkg in conda_packages]))
-            # Pick the one with smallest Levenshtein distance to the PyPI name
+            # Strip conda name prefixes before comparing distances.
             best_match = min(
-                conda_names, key=lambda name: levenshtein_distance(pypi_name, name)
+                conda_names,
+                key=lambda name: (
+                    levenshtein_distance(stripped_pypi, _strip_conda_prefixes(name)),
+                    levenshtein_distance(pypi_name, name),
+                ),
             )
+            best_distance = levenshtein_distance(
+                stripped_pypi, _strip_conda_prefixes(best_match)
+            )
+            if best_distance > MAX_LEVENSHTEIN_DISTANCE:
+                continue
             simplified_versions[pypi_version] = best_match
+
+        if not simplified_versions:
+            continue
 
         lookup = PyPIPackageLookup(
             channel=str(table.channel),
