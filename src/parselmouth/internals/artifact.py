@@ -15,14 +15,38 @@ egg_info_pattern = r"([^/]+?)-(\d+[^/]*)\.egg-info\/PKG-INFO"
 dist_pattern_compiled = re.compile(dist_info_pattern)
 egg_pattern_compiled = re.compile(egg_info_pattern)
 
-# Matches paths that start with one of the three canonical site-packages
-# locations of a conda environment:
-#   - "site-packages/"                        (noarch packages)
-#   - "lib/pythonX.Y/site-packages/"          (Linux / macOS)
-#   - "Lib/site-packages/" or "lib/site-packages/" (Windows)
+# Matches paths in a conda environment's site-packages:
+#   - site-packages/                        (noarch)
+#   - lib/pythonX.Y/site-packages/          (Linux/macOS)
+#   - Lib/site-packages/ or lib/site-packages/ (Windows)
 site_packages_prefix_pattern = re.compile(
     r"^(?:site-packages|lib/python\d+(?:\.\d+)?/site-packages|[Ll]ib/site-packages)/"
 )
+
+
+def extract_conda_name_from_filename(filename: str) -> str:
+    """
+    Extract the conda package name from a conda package filename.
+
+    Format: {name}-{version}-{build}.{ext} where name can contain hyphens.
+    Splits from the right to handle hyphens in the package name.
+
+    Example: "conda-package-handling-1.7.3-py39h5161555_1.tar.bz2" -> "conda-package-handling"
+    """
+    if filename.endswith(".conda"):
+        name = filename[:-6]
+    elif filename.endswith(".tar.bz2"):
+        name = filename[:-8]
+    else:
+        return ""
+
+    # Split from right: [name, version, build]. Name may contain hyphens.
+    parts = name.rsplit("-", 2)
+
+    if len(parts) >= 3:
+        return "-".join(parts[:-2])
+
+    return ""
 
 
 def check_if_is_direct_url(package_name: str, url: Optional[str]) -> bool:
@@ -48,21 +72,16 @@ def check_if_is_direct_url(package_name: str, url: Optional[str]) -> bool:
 
 def get_pypi_names_and_version(files: list[str]) -> dict[str, str]:
     """
-    Return a dictionary of normalized names to it's version
+    Return a dictionary of normalized names to their version.
     """
     package_names: dict[str, str] = {}
     for file_name in files:
         file_path = Path(file_name)
-        # Reject anything outside the conda environment's own site-packages,
-        # e.g. a bundled Python shipped under share/.../bundledpythonunix/.
-        # Those dist-info entries belong to a private interpreter and must
-        # not be advertised as PyPI names provided by the conda package.
+        # Skip files outside the conda environment's site-packages
+        # (e.g., bundled Python in share/.../bundledpythonunix/).
         if not site_packages_prefix_pattern.match(file_name):
             continue
-        # sometimes, packages like setuptools have some stuff vendored
-        # that our regex will catch:
-        # site-packages/setuptools/_vendor/zipp-3.19.2.dist-info/RECORD
-        # but in reality we don't want to include itages:
+        # Skip vendored packages (e.g., setuptools/_vendor/zipp)
         if "_vendor" in file_path.parts or "_vendored" in file_path.parts:
             continue
         match = dist_pattern_compiled.search(file_name) or egg_pattern_compiled.search(
@@ -103,14 +122,20 @@ def extract_artifact_mapping(artifact: ArtifactData, package_name: str) -> Mappi
     source: Optional[dict] = artifact["rendered_recipe"].get("source", None)
     is_direct_url: Optional[bool] = None
 
-    if source and isinstance(source, list):
-        source = artifact["rendered_recipe"]["source"][0]
+    if isinstance(source, list) and source:
+        source = source[0]
         is_direct_url = check_if_is_direct_url(
             package_name,
             source.get("url"),
         )
 
-    conda_name = artifact["name"]
+    conda_name = extract_conda_name_from_filename(package_name)
+    if not conda_name:
+        conda_name = artifact["name"]
+        logging.warning(
+            f"Could not parse conda name from filename {package_name}, "
+            f"falling back to index.json name '{conda_name}'"
+        )
 
     if not is_direct_url or not source:
         direct_url = None

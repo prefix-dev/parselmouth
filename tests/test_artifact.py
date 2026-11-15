@@ -1,4 +1,7 @@
-from parselmouth.internals.artifact import get_pypi_names_and_version
+from parselmouth.internals.artifact import (
+    extract_conda_name_from_filename,
+    get_pypi_names_and_version,
+)
 
 
 def test_linux_dist_info():
@@ -56,3 +59,28 @@ def test_mixed_real_and_bundled():
         "opt/some-app/python/site-packages/other-2.0.0.dist-info/METADATA",
     ]
     assert get_pypi_names_and_version(files) == {"realpkg": "1.0.0"}
+
+
+def test_extract_conda_name_from_filename_tar_bz2():
+    assert (
+        extract_conda_name_from_filename(
+            "conda-package-handling-1.7.3-py39h5161555_1.tar.bz2"
+        )
+        == "conda-package-handling"
+    )
+
+
+def test_extract_conda_name_from_filename_conda():
+    assert (
+        extract_conda_name_from_filename("numpy-1.26.4-py311h64a7726_0.conda")
+        == "numpy"
+    )
+
+
+def test_extract_conda_name_from_filename_with_hyphens():
+    assert (
+        extract_conda_name_from_filename(
+            "my-awesome-package-2.0.0-py310h1234567_0.tar.bz2"
+        )
+        == "my-awesome-package"
+    )
