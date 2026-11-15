@@ -1,4 +1,5 @@
 from parselmouth.internals.artifact import (
+    extract_artifact_mapping,
     extract_conda_name_from_filename,
     get_pypi_names_and_version,
 )
@@ -84,3 +85,27 @@ def test_extract_conda_name_from_filename_with_hyphens():
         )
         == "my-awesome-package"
     )
+
+
+def test_extract_artifact_mapping_fallback_on_bad_filename():
+    """When filename can't be parsed, fall back to artifact['name'] from index.json."""
+    artifact = {
+        "name": "numpy",
+        "version": "1.26.4",
+        "index": {"name": "numpy", "version": "1.26.4"},
+        "about": {},
+        "rendered_recipe": {
+            "source": [
+                {"url": "https://pypi.org/packages/source/n/numpy/numpy-1.26.4.tar.gz"}
+            ]
+        },
+        "raw_recipe": "",
+        "conda_build_config": {},
+        "files": ["lib/python3.10/site-packages/numpy-1.26.4.dist-info/METADATA"],
+        "metadata_version": 1,
+    }
+    # Invalid filename - not a conda package format
+    package_name = "not-a-valid-filename.xyz"
+
+    result = extract_artifact_mapping(artifact, package_name)
+    assert result.conda_name == "numpy"
