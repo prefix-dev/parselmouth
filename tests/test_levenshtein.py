@@ -3,6 +3,7 @@
 from parselmouth.internals.package_relations import (
     levenshtein_distance,
     create_pypi_lookup_files,
+    create_pypi_lookup_files_detailed,
     RelationsTable,
     PackageRelation,
 )
@@ -100,3 +101,176 @@ class TestBestMatchSelection:
         assert "numpy" in lookups
         # "py-numpy" (distance 3) should be selected over "python-numpy-extended" (distance 16)
         assert lookups["numpy"].conda_versions["1.26.4"] == "py-numpy"
+
+
+def _relation(
+    conda_name: str,
+    pypi_name: str = "tzdata",
+    pypi_version: str = "2022.1",
+) -> PackageRelation:
+    return PackageRelation(
+        conda_name=conda_name,
+        conda_filename=f"{conda_name}-1.0.0-py311h_0.conda",
+        conda_hash="a" * 64,
+        pypi_name=pypi_name,
+        pypi_version=pypi_version,
+        channel="conda-forge",
+    )
+
+
+class TestPrefixStrippingAndThreshold:
+    """Guards against wrong mappings like tzdata -> psycopg.
+
+    A conda package can bundle a PyPI package under an unrelated name, so the
+    lookup has to prefer the conda package that actually provides it and omit
+    matches that are too far away.
+    """
+
+    def test_tzdata_prefers_python_tzdata_over_psycopg(self):
+        """python-tzdata (stripped to "tzdata", dist 0) beats psycopg (dist 7)."""
+        table = RelationsTable(SupportedChannels.CONDA_FORGE)
+        table.relations = [
+            _relation("psycopg"),
+            _relation("python-tzdata"),
+            _relation("rosco"),
+        ]
+
+        lookups = create_pypi_lookup_files(table)
+        assert lookups["tzdata"].conda_versions["2022.1"] == "python-tzdata"
+
+    def test_tzdata_only_psycopg_is_omitted(self):
+        """psycopg is too far (dist 7) from tzdata, so no mapping is served."""
+        table = RelationsTable(SupportedChannels.CONDA_FORGE)
+        table.relations = [_relation("psycopg")]
+
+        lookups = create_pypi_lookup_files(table)
+        assert "tzdata" not in lookups
+
+    def test_tzdata_only_rosco_is_omitted(self):
+        """rosco is too far (dist 6) from tzdata, so no mapping is served."""
+        table = RelationsTable(SupportedChannels.CONDA_FORGE)
+        table.relations = [_relation("rosco")]
+
+        lookups = create_pypi_lookup_files(table)
+        assert "tzdata" not in lookups
+
+    def test_python_dateutil_exact_match_preserved(self):
+        """Stripping "python-" from both sides keeps python-dateutil exact."""
+        table = RelationsTable(SupportedChannels.CONDA_FORGE)
+        table.relations = [
+            PackageRelation(
+                conda_name="python-dateutil",
+                conda_filename="python-dateutil-2.9.0-py311h_0.conda",
+                conda_hash="a" * 64,
+                pypi_name="python-dateutil",
+                pypi_version="2.9.0",
+                channel="conda-forge",
+            ),
+        ]
+
+        lookups = create_pypi_lookup_files(table)
+        assert lookups["python-dateutil"].conda_versions["2.9.0"] == "python-dateutil"
+
+    def test_exact_match_preferred_over_prefixed(self):
+        """When both "foo" and "python-foo" provide PyPI "foo", exact "foo" wins."""
+        table = RelationsTable(SupportedChannels.CONDA_FORGE)
+        table.relations = [
+            _relation("python-foo", pypi_name="foo"),
+            _relation("foo", pypi_name="foo"),
+        ]
+
+        lookups = create_pypi_lookup_files(table)
+        assert lookups["foo"].conda_versions["2022.1"] == "foo"
+
+    def test_underscore_prefix_is_stripped_too(self):
+        """Conda packages using "python_" instead of "python-" still match.
+
+        Names are normalized before the prefix is stripped, so
+        "python_http_client" equals "python-http-client".
+        """
+        table = RelationsTable(SupportedChannels.CONDA_FORGE)
+        table.relations = [
+            _relation("python_http_client", pypi_name="python-http-client"),
+            _relation("python_cmethods", pypi_name="python-cmethods"),
+            _relation(
+                "python_jsonschema_objects", pypi_name="python-jsonschema-objects"
+            ),
+            _relation("python_version", pypi_name="python-version"),
+        ]
+
+        lookups = create_pypi_lookup_files(table)
+        assert (
+            lookups["python-http-client"].conda_versions["2022.1"]
+            == "python_http_client"
+        )
+        assert lookups["python-cmethods"].conda_versions["2022.1"] == "python_cmethods"
+        assert (
+            lookups["python-jsonschema-objects"].conda_versions["2022.1"]
+            == "python_jsonschema_objects"
+        )
+        assert lookups["python-version"].conda_versions["2022.1"] == "python_version"
+
+    def test_matplotlib_only_finesse_is_omitted(self):
+        """finesse is too far from matplotlib, so no mapping is served."""
+        table = RelationsTable(SupportedChannels.CONDA_FORGE)
+        table.relations = [
+            PackageRelation(
+                conda_name="finesse",
+                conda_filename="finesse-1.0.0-py311h_0.conda",
+                conda_hash="a" * 64,
+                pypi_name="matplotlib",
+                pypi_version="3.9.0rc2",
+                channel="conda-forge",
+            ),
+        ]
+
+        lookups = create_pypi_lookup_files(table)
+        assert "matplotlib" not in lookups
+
+    def test_phantom_pypi_names_are_omitted(self):
+        """PyPI names that don't exist on PyPI are never served as mappings."""
+        table = RelationsTable(SupportedChannels.CONDA_FORGE)
+        table.relations = [
+            _relation("zaber-motion", pypi_name="zaber-bson"),
+            _relation("alpenglow", pypi_name="alpenglow-sip"),
+            _relation("ambertools", pypi_name="amberutils"),
+            _relation(
+                "felyxcontrib-metrics-workflow",
+                pypi_name="felyxcontribs-metrics-workflow",
+            ),
+            _relation("gw-sklearn-xarray", pypi_name="sklearn-xarray"),
+        ]
+
+        lookups = create_pypi_lookup_files(table)
+        for suppressed in (
+            "zaber-bson",
+            "alpenglow-sip",
+            "amberutils",
+            "felyxcontribs-metrics-workflow",
+            "sklearn-xarray",
+        ):
+            assert suppressed not in lookups
+
+    def test_detailed_lookup_applies_the_same_filters(self):
+        """The detailed path applies the same suppression, prefix, and
+        threshold rules as the simplified path."""
+        table = RelationsTable(SupportedChannels.CONDA_FORGE)
+        table.relations = [
+            _relation("python-tzdata", pypi_name="tzdata"),
+            _relation("psycopg", pypi_name="tzdata"),
+            _relation("zaber-motion", pypi_name="zaber-bson"),
+        ]
+
+        detailed = create_pypi_lookup_files_detailed(table)
+
+        # Suppressed names are omitted from the detailed output too.
+        assert "zaber-bson" not in detailed
+
+        # The vendored conda package is dropped; only the in-threshold one
+        # remains, and it is the one the simplified path picks.
+        assert "tzdata" in detailed
+        names = {pkg.name for pkg in detailed["tzdata"].conda_versions["2022.1"]}
+        assert names == {"python-tzdata"}
+
+        simple = create_pypi_lookup_files(table)
+        assert simple["tzdata"].conda_versions["2022.1"] == "python-tzdata"
