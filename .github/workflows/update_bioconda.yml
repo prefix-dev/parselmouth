@@ -21,7 +21,6 @@ jobs:
     with:
       channel: bioconda
       use_legacy_mapping: false
-      needs_anaconda_token: false
       force_v1_generation: ${{ inputs.force_v1_generation || false }}
     secrets:
       R2_PREFIX_ACCOUNT_ID: ${{ secrets.R2_PREFIX_ACCOUNT_ID }}
