@@ -17,11 +17,6 @@ on:
         required: false
         type: boolean
         default: false
-      needs_anaconda_token:
-        description: 'Whether this channel requires ANACONDA_TOKEN'
-        required: false
-        type: boolean
-        default: false
       force_v1_generation:
         description: 'Force v1 mappings generation even if no new packages'
         required: false
@@ -38,8 +33,6 @@ on:
         required: true
       GH_TOKEN:
         required: true
-      ANACONDA_TOKEN:
-        required: false
 
 concurrency:
   group: update-${{ inputs.channel }}
@@ -69,7 +62,6 @@ jobs:
           R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
           R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
           R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
-          ANACONDA_TOKEN: ${{ inputs.needs_anaconda_token && secrets.ANACONDA_TOKEN || '' }}
 
       - name: Upload requested index.json
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -102,7 +94,6 @@ jobs:
           R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
           R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
           R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
-          ANACONDA_TOKEN: ${{ inputs.needs_anaconda_token && secrets.ANACONDA_TOKEN || '' }}
 
       - name: Upload partial index
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -131,7 +122,6 @@ jobs:
           R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
           R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
           R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
-          ANACONDA_TOKEN: ${{ inputs.needs_anaconda_token && secrets.ANACONDA_TOKEN || '' }}
 
   # ===== Generate v1 Mappings (Relations Table + PyPI Lookups) =====
   update_v1_mappings:
@@ -153,7 +143,6 @@ jobs:
           R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
           R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
           R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
-          ANACONDA_TOKEN: ${{ inputs.needs_anaconda_token && secrets.ANACONDA_TOKEN || '' }}
 
   # ================================================
 
@@ -191,7 +180,6 @@ jobs:
           R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
           R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
           R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
-          ANACONDA_TOKEN: ${{ inputs.needs_anaconda_token && secrets.ANACONDA_TOKEN || '' }}
 
       - name: Update compressed mapping
         run: pixi run parselmouth update-mapping --channel ${{ inputs.channel }}
@@ -201,7 +189,6 @@ jobs:
           R2_PREFIX_ACCESS_KEY_ID: ${{ secrets.R2_PREFIX_ACCESS_KEY_ID }}
           R2_PREFIX_SECRET_ACCESS_KEY: ${{ secrets.R2_PREFIX_SECRET_ACCESS_KEY }}
           R2_PREFIX_BUCKET: ${{ secrets.R2_PREFIX_BUCKET }}
-          ANACONDA_TOKEN: ${{ inputs.needs_anaconda_token && secrets.ANACONDA_TOKEN || '' }}
 
       - name: Commit and push changes
         env:

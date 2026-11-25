@@ -24,42 +24,40 @@ from conda_forge_metadata.types import ArtifactData
 from parselmouth.internals.channels import ChannelUrls, SupportedChannels
 from parselmouth.internals.http_utils import get_global_session
 
-from dotenv import load_dotenv
-
-
-def load_anaconda_token() -> str:
-    """Load Anaconda API token from .env file."""
-    load_dotenv()
-    token = os.getenv("ANACONDA_TOKEN")
-    if not token:
-        raise ValueError("ANACONDA_TOKEN not found in .env file")
-    return token
-
 
 @functools.lru_cache(maxsize=None)
 def fetch_channel_labels(channel: SupportedChannels) -> list[str]:
-    """Fetch all labels for a given channel from Anaconda API.
+    """Fetch all labels for a given channel from the public Anaconda API.
 
-    This deliberately does NOT go through the shared session from
-    `get_global_session()`. Repodata downloads from conda.anaconda.org set a
-    `session` cookie scoped to `Domain=anaconda.org`; the shared session then
-    forwards that anonymous cookie to api.anaconda.org, which prefers it over
-    the `Authorization: token ...` header and answers 401 "Authentication
-    Error". A one-off request carries no cookie jar, so the token is honored.
+    The `/channels/{owner}` endpoint requires authentication, so instead we
+    list the owner's packages and collect the labels of every file. These
+    endpoints are public for public channels, so no token is needed.
+
+    This deliberately does NOT use the shared session from
+    `get_global_session()`: repodata downloads from conda.anaconda.org set a
+    `session` cookie scoped to `Domain=anaconda.org`, which would then be sent
+    to api.anaconda.org. A dedicated session keeps that cookie out.
 
     The result is cached per channel: labels do not change within a run, and
-    this avoids one API call per subdir.
+    this avoids repeating the API calls for every subdir.
     """
-    token = load_anaconda_token()
-    headers = {"Authorization": f"token {token}"}
+    with requests.Session() as session:
+        response = session.get(
+            f"https://api.anaconda.org/packages/{channel}", timeout=60
+        )
+        response.raise_for_status()
+        package_names = [package["name"] for package in response.json()]
 
-    response = requests.get(
-        f"https://api.anaconda.org/channels/{channel}", headers=headers, timeout=60
-    )
-    response.raise_for_status()
+        labels: set[str] = set()
+        for name in package_names:
+            response = session.get(
+                f"https://api.anaconda.org/package/{channel}/{name}", timeout=60
+            )
+            response.raise_for_status()
+            for file in response.json().get("files", []):
+                labels.update(file.get("labels", []))
 
-    channel_data = response.json()
-    return list(channel_data.keys())
+    return sorted(labels)
 
 
 def get_all_archs_available(channel: SupportedChannels) -> list[str]:
