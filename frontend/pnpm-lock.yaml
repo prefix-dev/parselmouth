@@ -47,7 +47,7 @@ importers:
         version: 18.3.7(@types/react@18.3.28)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.7.0(vite@6.4.3(jiti@1.21.7))
+        version: 4.7.0(vite@6.4.6(jiti@1.21.7))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.5.0(postcss@8.5.26)
@@ -61,8 +61,8 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
       vite:
-        specifier: ^6.4.3
-        version: 6.4.3(jiti@1.21.7)
+        specifier: ^6.4.6
+        version: 6.4.6(jiti@1.21.7)
 
 packages:
 
@@ -765,11 +765,6 @@ packages:
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
 
-  cssesc@3.0.0:
-    resolution: {integrity: sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==}
-    engines: {node: '>=4'}
-    hasBin: true
-
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
@@ -1015,8 +1010,8 @@ packages:
     peerDependencies:
       postcss: ^8.2.14
 
-  postcss-selector-parser@6.1.2:
-    resolution: {integrity: sha512-Q8qQfPiZ+THO/3ZrOrO0cJJKfpYCagtMUkXbnEfmgUjwXg6z/WBeOyS9APBBPCTSiDV+s4SwQGu8yFsiMRIudg==}
+  postcss-selector-parser@6.1.6:
+    resolution: {integrity: sha512-BK87/Qgti3DIcgS2PaCVoteFIkjIFvCJBizZDIVSjdlFNg4Jv+SRqbN2JONb/qQUH4ZFqfXYF+izg15W2HVRvA==}
     engines: {node: '>=4'}
 
   postcss-value-parser@4.2.0:
@@ -1179,8 +1174,8 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
-  vite@6.4.3:
-    resolution: {integrity: sha512-NTKlcQjlAK7MlQoyb6LgaqHc8sso/pVyUJYWMws3jg21uTJw/LddqIFPcPqP6PzpgbIcZyKI85sFE4HBrQDA8A==}
+  vite@6.4.6:
+    resolution: {integrity: sha512-RtsraAwEG68idOA6iUOoIpOlcSKROnf815aIq9qHTSrDNpLoBrBa12suyfcEd8qn0xwOVQI1Yhm1GbmTjF600A==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
     peerDependencies:
@@ -1724,7 +1719,7 @@ snapshots:
       '@types/prop-types': 15.7.15
       csstype: 3.2.3
 
-  '@vitejs/plugin-react@4.7.0(vite@6.4.3(jiti@1.21.7))':
+  '@vitejs/plugin-react@4.7.0(vite@6.4.6(jiti@1.21.7))':
     dependencies:
       '@babel/core': 7.29.7
       '@babel/plugin-transform-react-jsx-self': 7.27.1(@babel/core@7.29.7)
@@ -1732,7 +1727,7 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 6.4.3(jiti@1.21.7)
+      vite: 6.4.6(jiti@1.21.7)
     transitivePeerDependencies:
       - supports-color
 
@@ -1807,8 +1802,6 @@ snapshots:
   commander@4.1.1: {}
 
   convert-source-map@2.0.0: {}
-
-  cssesc@3.0.0: {}
 
   csstype@3.2.3: {}
 
@@ -2003,11 +1996,10 @@ snapshots:
   postcss-nested@6.2.0(postcss@8.5.26):
     dependencies:
       postcss: 8.5.26
-      postcss-selector-parser: 6.1.2
+      postcss-selector-parser: 6.1.6
 
-  postcss-selector-parser@6.1.2:
+  postcss-selector-parser@6.1.6:
     dependencies:
-      cssesc: 3.0.0
       util-deprecate: 1.0.2
 
   postcss-value-parser@4.2.0: {}
@@ -2154,7 +2146,7 @@ snapshots:
       postcss-js: 4.1.0(postcss@8.5.26)
       postcss-load-config: 6.0.1(jiti@1.21.7)(postcss@8.5.26)
       postcss-nested: 6.2.0(postcss@8.5.26)
-      postcss-selector-parser: 6.1.2
+      postcss-selector-parser: 6.1.6
       resolve: 1.22.12
       sucrase: 3.35.1
     transitivePeerDependencies:
@@ -2207,7 +2199,7 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
-  vite@6.4.3(jiti@1.21.7):
+  vite@6.4.6(jiti@1.21.7):
     dependencies:
       esbuild: 0.25.12
       fdir: 6.5.0(picomatch@4.0.4)
